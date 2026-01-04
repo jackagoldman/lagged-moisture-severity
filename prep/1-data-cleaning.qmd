@@ -107,9 +107,9 @@ saveRDS(vpd_ma_30, here("data", "cleaned","vpd_ma_30.rds"))
  Load RBR zonal stats data and select only GID, median, and 90th percentile
 
  ```{r}
-rbr_data = read_csv(here("data", "batch_rbr_w_offset_zonal_stats.csv")) |> 
-    select(GID, median, percentile_90)  |> 
-    rename(pct_90 = percentile_90) 
+rbr_data = read_csv(here("data", "batch_rbr_w_offset_zonal_stats_p95.csv")) |> 
+    select(GID, median, percentile_95)  |> 
+    rename(pct_95 = percentile_95) 
 
  ```
 

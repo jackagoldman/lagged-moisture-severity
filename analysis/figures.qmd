@@ -1,0 +1,133 @@
+```{r}
+library(ggplot2)
+library(patchwork)
+# source
+source(here("utils", "plot_functions.r"))
+```
+
+
+# Linear Predictor plots 
+
+
+
+
+
+# H4: are there lagged effects?
+
+Analyzed lagged effects through visualization of the 2D smooths from the distributed lag smooths. Significant areas circled in black . If no significant areas, there were no differences across lags. Suggests that lagged effects are not as importance as the overall effects of moisture condditions on fire severity.
+
+## set colour palettes for ecoregions
+
+```{r}
+lsj <- scale_fill_viridis_c(
+        name = 'p(Median)',
+        option = "D",
+        guide = guide_colorbar(
+          direction = "horizontal",
+          title.position = "top",
+          title.hjust = 0.5
+        )
+      ) 
+ln <- scale_fill_viridis_c(
+        name = 'p(Median)',
+        option = "E",
+        guide = guide_colorbar(
+          direction = "horizontal",
+          title.position = "top",
+          title.hjust = 0.5
+        )
+      ) 
+lsj_e <- scale_fill_viridis_c(
+        name = 'p(Extreme)',
+        option = "D",
+        guide = guide_colorbar(
+          direction = "horizontal",
+          title.position = "top",
+          title.hjust = 0.5
+        )
+      ) 
+ln_e<- scale_fill_viridis_c(
+        name = 'p(Extreme)',
+        option = "E",
+        guide = guide_colorbar(
+          direction = "horizontal",
+          title.position = "top",
+          title.hjust = 0.5
+        )
+      ) 
+```
+
+## Median
+```{r}
+
+
+estimates_btl <- get_lag_estimates(m_vpd_median, lag_var = "L", smooth_var = "vpd", weights = "weights_btl")
+plot_vpd_btl <- plot_lag_smooth(m_vpd_median, estimates_btl, "vpd", "L", "weights_btl")
+plot_vpd_btl
+
+estimates_lsj <- get_lag_estimates(m_vpd_median, lag_var = "L", smooth_var = "vpd", weights = "weights_lsj")
+plot_vpd_lsj <- plot_lag_smooth(m_vpd_median, estimates_lsj, "vpd", "L", "weights_lsj")
+plot_vpd_lsj + lsj
+
+estimates_ln <- get_lag_estimates(m_vpd_median, lag_var = "L", smooth_var = "vpd", weights = "weights_ln")
+plot_vpd_ln <- plot_lag_smooth(m_vpd_median, estimates_ln, "vpd", "L", "weights_ln")
+plot_vpd_ln + ln
+
+
+```
+
+## cmi
+```{r}
+estimates_cmi <- get_lag_estimates(m_cmi_median,  "LL",  "cmi_wy", "weights_btl2")
+plot_cmi <- plot_lag_smooth(m_cmi_median, estimates_cmi, "cmi_wy", "LL", "weights_btl2")
+
+plot_cmi
+
+estimates_cmi_lsj <- get_lag_estimates(m_cmi_median, lag_var = "LL", smooth_var = "cmi_wy", weights = "weights_lsj2")
+plot_cmi_lsj <- plot_lag_smooth(m_cmi_median, estimates_cmi_lsj, "cmi_wy", "LL", "weights_lsj2")
+
+plot_cmi_lsj + lsj
+
+estimates_cmi_ln <- get_lag_estimates(m_cmi_median, lag_var = "LL", smooth_var = "cmi_wy", weights = "weights_ln2")
+plot_cmi_ln <- plot_lag_smooth(m_cmi_median, estimates_cmi_ln, "cmi_wy", "LL", "weights_ln2")
+
+plot_cmi_ln + ln
+
+```
+
+# Extreme
+
+
+```{r}
+estimates_btl_ext <- get_lag_estimates(m_vpd_ext, lag_var = "L", smooth_var = "vpd", weights = "weights_btl")
+plot_vpd_btl_ext <- plot_lag_smooth(m_vpd_ext, estimates_btl_ext, "vpd", "L", "weights_btl")
+plot_vpd_btl_ext
+
+estimates_lsj_ext <- get_lag_estimates(m_vpd_ext, lag_var = "L", smooth_var = "vpd", weights = "weights_lsj")
+plot_vpd_lsj_ext <- plot_lag_smooth(m_vpd_ext, estimates_lsj_ext, "vpd", "L", "weights_lsj")
+plot_vpd_lsj_ext + lsj_e
+
+estimates_ln_ext <- get_lag_estimates(m_vpd_ext, lag_var = "L", smooth_var = "vpd", weights = "weights_ln")
+plot_vpd_ln_ext <- plot_lag_smooth(m_vpd_ext, estimates_ln_ext, "vpd", "L", "weights_ln")
+plot_vpd_ln_ext + ln_e
+```
+
+
+```{r}
+estimates_cmi_ext <- get_lag_estimates(m_cmi_ext,  "LL",  "cmi_wy", "weights_btl2")
+plot_cmi_ext <- plot_lag_smooth(m_cmi_ext, estimates_cmi_ext, "cmi_wy", "LL", "weights_btl2") 
+plot_cmi_ext
+
+estimates_cmi_lsj_ext <- get_lag_estimates(m_cmi_ext, lag_var = "LL", smooth_var = "cmi_wy", weights = "weights_lsj2")  
+plot_cmi_lsj_ext <- plot_lag_smooth(m_cmi_ext, estimates_cmi_lsj_ext, "cmi_wy", "LL", "weights_lsj2")
+plot_cmi_lsj_ext + lsj_e
+
+estimates_cmi_ln_ext <- get_lag_estimates(m_cmi_ext, lag_var = "LL", smooth_var = "cmi_wy", weights = "weights_ln2")  
+plot_cmi_ln_ext <- plot_lag_smooth(m_cmi_ext, estimates_cmi_ln_ext, "cmi_wy", "LL", "weights_ln2")
+plot_cmi_ln_ext + ln_e
+```
+
+
+# Cumulative effects plots
+
+

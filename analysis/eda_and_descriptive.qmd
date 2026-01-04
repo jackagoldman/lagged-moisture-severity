@@ -20,13 +20,16 @@ library(reshape2)
 library(GGally)
 library(dplyr)
 library(here)
+library(ggridges)
 ```
 
 
 # Read in data
 
 ```{r}
-moisture_data <- readRDS(here("data", "analysis_ready", "moisture_lagged_data.rds"))
+moisture_data <- readRDS(here("data", "analysis_ready", "moisture_lagged_data.rds")) |> 
+  filter(fire_size_ha > 200) |> 
+  filter(ecoregion_lvl %in%c("LN", "BTL", "LSJ"))
 ```
 
 # ecoregion levels
@@ -34,8 +37,117 @@ moisture_data <- readRDS(here("data", "analysis_ready", "moisture_lagged_data.rd
 unique(moisture_data$ecoregion)
 # counts per ecoregion 
 ecoregion_counts <- moisture_data |> 
-    group_by(ecoregion_lvl.y) |> 
+    group_by(ecoregion_lvl) |> 
     summarise(count = n())
+
+print(ecoregion_counts)
+```
+
+# fires per year
+
+```{r}
+fires_per_year <- moisture_data |> 
+    group_by(fyear) |> 
+    summarise(num_fires = n())
+print(fires_per_year, n = Inf)
+
+ggplot(fires_per_year, aes(x = fyear, y = num_fires)) +
+    geom_bar(stat = "identity", fill = "steelblue") +
+    theme_minimal() +
+    labs(title = "Number of Fires per Year", x = "Year", y = "Number of Fires")
+
+# geom ridgline plot of median by year
+m_ridge <- ggplot(moisture_data, aes(x = median, y = as.factor(fyear), fill = ..x..)) +
+    geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01) +
+    scale_fill_viridis(name = "Median", option = "C") +
+    theme_minimal() +
+    labs(title = "Distribution of Median by Year", x = "Median", y = "Year")
+
+#geom ridgline of pct_95 by year
+q95_ridge <- ggplot(moisture_data, aes(x = pct_95, y = as.factor(fyear), fill = ..x..)) +
+    geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01) +
+    scale_fill_viridis(name = "95th Percentile", option = "C") +
+    theme_minimal() +
+    labs(title = "Distribution of Burn Severiy Extremes by Year", x = "95th Percentile Burn Severity", y = "Year")
+
+# create  table of fires per year using gt package
+
+fy_tbl <- fires_per_year |> 
+    rename(Year = fyear, `Number of Fires` = num_fires) |> 
+    gt() |>
+    tab_options(
+        table.font.names = "Arial",
+        table.font.size = px(8)
+    ) 
+           
+
+
+# patchwork group ridgeline plts and table
+library(patchwork)
+p1 <- (m_ridge | q95_ridge) +
+    plot_layout(heights = c(3, 1))
+
+
+
+ggsave(here("figures", "fires_per_year_ridgeline.png"), width = 10, height = 6)
+
+```
+
+# variantion in severity across years and ecoregions
+
+```{r}
+year_eco <- moisture_data |> 
+    select(c(year, ecoregion_lvl, median, pct_95, fire_size_ha, mean_evi)) |> 
+    drop_na() |> 
+    select(-c(mean_evi))
+
+#  total hectares burned per year and ecoregion and total
+burned_area_summary <- year_eco |> 
+    group_by(year, ecoregion_lvl) |> 
+    summarise(total_burned_ha = sum(fire_size_ha),
+              mean_median = mean(median),
+              mean_pct_95 = mean(pct_95),
+              num_fires = n()) |> 
+    ungroup()
+
+# total burned area
+sum(year_eco$fire_size_ha)
+
+# total ecoregion
+ecoregion_summary <- year_eco |> 
+    group_by(ecoregion_lvl) |> 
+    summarise(total_burned_ha = sum(fire_size_ha),
+              mean_median = mean(median),
+              mean_pct_95 = mean(pct_95),
+              num_fires = n()) |> 
+    ungroup()
+
+```
+
+#
+```{r}
+
+```
+
+# range of median and pct_95 
+
+```{r}
+summary(moisture_data$median)
+summary(moisture_data$pct_95)
+range(moisture_data$median)
+range(moisture_data$pct_95)
+sd(moisture_data$median)
+sd(moisture_data$pct_95)
+```
+
+# range of model response/predictors as well as sd as gt table
+```{r}
+vars <- moisture_data |> 
+    select(cmi_wy, vpd, pct_conf, fwi_90th, mean_evi)
+
+# back transform all vars (scaled mean and sd*2)
+
+
 ```
 
 

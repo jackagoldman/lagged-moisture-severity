@@ -1,0 +1,256 @@
+---
+title: "Median DLNM Analysis"
+author: "Jack A. Goldman"
+date: "2025-12-26"
+format: html
+---
+
+This use mgcv and dlnm packages to fit a distributed lag model for VPD and fire severity (RBR median)
+We use a matrix of VPD values for each fire event (GID) with columns representing lags from 1 to 30 days before fire start date
+
+# Objective
+- Short-term increases in VPD (drying conditions) in the days leading up to fire ignition will lead to higher burn severity (RBR median)
+- Long-term VPD trends (e.g., seasonal averages) may have less influence on burn severity compared to short-term fluctuations by decreasing fuel abundance
+
+- lagged effects of VPD on burn severity will be non-linear, with immediate effects being stronger than delayed effects
+- lagged effects of  CMI on burn severity will be non-linear, with immediate effects being stronger than delayed effects
+
+
+The goal is to model the effects of short-term and long-term moisture conditions on median and extreme burn severity as having a non-linear, lagged effect and compare whether short-term or long-term moisture conditions better explain burn severity patterns.
+
+# Questions
+
+To achieve this goal, I'll test 4 hypotheses for short and long-term moisture conditions (VPD and CMI (maybe RH and FWI?)) on both median and extreme (95th percentile) burn severity using a series of GAMs with distributed lag non-linear models implemented using the `mgcv`
+
+1.  What is the relative impact of moisture conditions on burn severity?
+2.  Are short-term or long-term moisture conditions more important?
+3.  Are relationships consistent between median and extreme?
+4.  Where are there lagged effects?
+
+
+
+```{r}
+library(ggplot2)
+library(tidyr)
+library(ggplot2)
+library(viridis)
+library(cowplot)
+library(patchwork)
+library(readr)
+library(mgcv)
+library(dlnm)
+library(here)
+library(gratia)
+```
+
+
+# Read in data
+
+```{r}
+moisture_data <- readRDS(here ("data", "analysis_ready","moisture_lagged_data.rds")) 
+```
+
+```{r}
+#are there nas in the data
+sum(is.na(moisture_data))
+moisture_data <- moisture_data |>  
+  filter(fire_size_ha > 200) |> 
+  filter(ecoregion_lvl %in%c("LN", "BTL", "LSJ"))
+```
+
+# Build Full Models
+
+
+
+## vpd with distributed lag
+```{r}
+
+m_vpd_median <- gam(median ~ 
+       te(vpd, L,  by = weights_btl, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
+       te(vpd, L,  by = weights_ln, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
+       te(vpd, L,  by = weights_lsj, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
+         pct_conf + fwi_90th  +
+         mean_evi +  
+        s(fyear,bs = "re") +
+        s(ecoregion_lvl, bs = "re") ,
+      data = moisture_data,
+      family = scat(link = "identity"),
+      select = TRUE, 
+      method = "REML")
+
+```
+
+```{r}
+m_vpd_ext <- gam(pct_95 ~ 
+       te(vpd, L,  by = weights_btl, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
+       te(vpd, L,  by = weights_ln, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
+       te(vpd, L,  by = weights_lsj, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
+         pct_conf+ fwi_90th  +
+         mean_evi +  
+        s(fyear,bs = "re") +
+        s(ecoregion_lvl, bs = "re") ,
+      data = moisture_data,
+      family = scat(link = "identity"),
+      select = TRUE,
+      method = "REML")
+```
+
+## cmi
+
+## cmi with distributed lag
+```{r}
+
+m_cmi_median <- gam(median ~ 
+       te(cmi_wy, LL,  by = weights_btl2, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
+       te(cmi_wy, LL,   by = weights_ln2, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
+       te(cmi_wy, LL,   by = weights_lsj2, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag # cmi with 5 year lag
+        pct_conf + 
+        fwi_90th + 
+        mean_evi + 
+        s(fyear,bs = "re") +
+        s(ecoregion_lvl, bs = "re") ,
+      data = moisture_data,
+      family = scat(link = "identity"),
+      select = TRUE,
+      method = "REML")
+
+```
+
+```{r}
+m_cmi_ext <- gam(pct_95 ~ 
+       te(cmi_wy, LL,  by = weights_btl2, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
+       te(cmi_wy, LL,   by = weights_ln2, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
+       te(cmi_wy, LL,   by = weights_lsj2, k = c(5,5), bs = c('tp', 'cr')) + # vpd with lag # cmi with 5 year lag
+        pct_conf + 
+        fwi_90th + 
+        mean_evi + 
+        s(fyear,bs = "re") +
+        s(ecoregion_lvl, bs = "re") ,
+      data = moisture_data,
+      family = scat(link = "identity"),
+      select = TRUE,
+      method = "REML")
+```
+
+## save models
+
+```{r}
+
+saveRDS(m_vpd_median, here("analysis", "models","m_vpd_median.rds"))
+saveRDS(m_cmi_median, here("analysis", "models","m_cmi_median.rds"))
+saveRDS(m_vpd_ext, here("analysis", "models","m_vpd_ext.rds"))
+saveRDS(m_cmi_ext, here("analysis", "models","m_cmi_ext.rds"))
+```
+
+## assess model fits
+
+vpd
+```{r}
+gam.check(m_vpd_median)
+```
+
+cmi
+```{r}
+gam.check(m_cmi_median)
+
+```
+
+# H1: What is the relative impact of moisture conditions on burn severity?
+
+checked hierarchical partitioning using gam.hp
+
+## median
+```{r}
+iv <- list(
+  moisture = c("te(vpd,L,by=weights_btl,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(vpd,L,by=weights_ln,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(vpd,L,by=weights_lsj,k=c(3,4),bs=c(\"tp\",\"cr\"))"), 
+  fire_weather = "fwi_90th",
+  fuels = c("pct_conf", "mean_evi"))
+vpd_median_hp <- gam.hp(m_vpd_median, iv)
+vpd_median_hp
+```
+
+Moisture contributes most to the model, explained 57% of the deviance compared to 39% for fuels and 2.1% for fire weather
+
+```{r}
+iv <- list(
+  moisture = c("te(cmi_wy,LL,by=weights_btl2,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(cmi_wy,LL,by=weights_ln2,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(cmi_wy,LL,by=weights_lsj2,k=c(3,4),bs=c(\"tp\",\"cr\"))"), 
+  fire_weather = "fwi_90th",
+  fuels = c("pct_conf", "mean_evi"))
+cmi_median_hp <- gam.hp(m_cmi_median, iv)
+cmi_median_hp
+```
+
+Moisture contributes most to the model, explained 62% of the deviance compared to 36% for fuels and 1.8% for fire weather
+
+
+## Extreme
+
+```{r}
+iv <- list(
+  moisture = c("te(vpd,L,by=weights_btl,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(vpd,L,by=weights_ln,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(vpd,L,by=weights_lsj,k=c(3,4),bs=c(\"tp\",\"cr\"))"), 
+  fire_weather = "fwi_90th",
+  fuels = c("pct_conf", "mean_evi"))
+vpd_ext_hp <- gam.hp(m_vpd_ext, iv)
+vpd_ext_hp
+```
+
+Moisture contributes most to the model, explained 51.9% of the deviance compared to 47.6% for fuels and 0.44% for fire weather
+However, fuels may be more important in predicting extreme burn severity compared to median burn severity 
+
+```{r}
+iv <- list(
+  moisture = c("te(cmi_wy,LL,by=weights_btl2,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(cmi_wy,LL,by=weights_ln2,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(cmi_wy,LL,by=weights_lsj2,k=c(3,4),bs=c(\"tp\",\"cr\"))"), 
+  fire_weather = "fwi_90th",
+  fuels = c("pct_conf", "mean_evi"))
+cmi_ext_hp <- gam.hp(m_cmi_ext, iv)
+cmi_ext_hp
+
+```
+
+Moisture contributes most to the model, explained 61.4% of the deviance compared to 38.16% for fuels and 0.44% for fire weather
+
+
+# H2: Are short-term or long-term moisture conditions more important?
+
+Compare RMSE using CV 
+
+Since we fit models with REML estimation, we cant compare models using AIC or ANOVA because the fixed effects structure differs between the models. Therefore, we preformed cross-validation to compare model performance using RMSE as the metric. The better model
+
+## Median
+
+```{r}
+
+compare_models_cv(m_vpd_median, m_cmi_median, moisture_data, response_var = "median")
+
+
+```
+
+Long-term is slightly better modely but nearly equivalent to short-term moisture conditions
+
+## Extreme
+
+```{r}
+compare_models_cv(m_vpd_ext, m_cmi_ext, moisture_data, response_var = "pct_95")
+```
+
+Long-term is slightly better modely but nearly equivalent to short-term moisture conditions
+
+
+# H3: Are relationships consistent between median and extreme?
+
+
+## VPD
+```{r}
+summary(m_vpd_median)
+summary(m_vpd_ext)
+
+```
+
+## CMI
+```{r}
+summary(m_cmi_median)
+summary(m_cmi_ext)
+
+```
+
+

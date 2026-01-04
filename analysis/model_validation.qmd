@@ -1,0 +1,31 @@
+
+```{r}
+source(here("utils","validation_functions.R"))
+```
+
+# Median
+# VPD
+```{r}
+
+check_res_edf(m_vpd_median)
+
+```
+
+# CMI
+
+```{r}
+check_res_edf(m_cmi_median)
+
+```
+
+# Extreme
+# VPD
+```{r}
+check_res_edf(m_vpd_ext)
+```
+
+# CMI
+```{r}
+check_res_edf(m_cmi_ext)
+
+```
