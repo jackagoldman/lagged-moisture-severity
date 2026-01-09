@@ -1,16 +1,228 @@
 ```{r}
 library(ggplot2)
 library(patchwork)
+library(gratia)
 # source
 source(here("utils", "plot_functions.r"))
 ```
 
 
-# Linear Predictor plots 
+## Fuels plots
+
+We plotted the linear predictor from the CMI model because it had slightly better fit for both median and extremes
+
+## mean EVI
+
+```{r}
+
+
+# For median burn severity (m_cmi_median)
+# Get estimates for each ecoregion's pct_conf smooth
+smooth_btl <- smooth_estimates(m_cmi_median, smooth = "s(mean_evi):ecoregion_lvlBTL", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+smooth_ln <- smooth_estimates(m_cmi_median, smooth = "s(mean_evi):ecoregion_lvlLN", n = 100, partial = TRUE, unconditional = TRUE)  |> add_confint()
+smooth_lsj <- smooth_estimates(m_cmi_median, smooth = "s(mean_evi):ecoregion_lvlLSJ", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+
+# Combine into one data frame for plotting
+smooth_med <- bind_rows(
+  smooth_btl %>% mutate(ecoregion = "BTL"),
+  smooth_ln %>% mutate(ecoregion = "LN"),
+  smooth_lsj %>% mutate(ecoregion = "LSJ"))
+
+# Plot with overlaid lines per ecoregion
+evi_med <- ggplot() +
+  #geom_point(data = moisture_data, aes(x = mean_evi, y = median, color = ecoregion_lvl), alpha = 0.1) +
+  geom_line(data = smooth_med, aes(x = mean_evi, y = .estimate, color = ecoregion), size = 1.5, lineend = "round") +
+  geom_ribbon(data = smooth_med, aes(x = mean_evi, ymin = .lower_ci, ymax = .upper_ci, fill = ecoregion), alpha = 0.2) +
+  labs(x = "Mean EVI (z-score)", title = "VPD", y = "Median Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_color_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen")) +
+  scale_fill_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"))
 
 
 
+# For extreme burn severity (m_cmi_ext)
+smooth_btl_ext <- smooth_estimates(m_cmi_ext, smooth = "s(mean_evi):ecoregion_lvlBTL", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+smooth_ln_ext <- smooth_estimates(m_cmi_ext, smooth = "s(mean_evi):ecoregion_lvlLN", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+smooth_lsj_ext <- smooth_estimates(m_cmi_ext, smooth = "s(mean_evi):ecoregion_lvlLSJ", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
 
+smooth_ext <- bind_rows(
+  smooth_btl_ext %>% mutate(ecoregion = "BTL"),
+  smooth_ln_ext %>% mutate(ecoregion = "LN"),
+  smooth_lsj_ext %>% mutate(ecoregion = "LSJ")
+)
+
+evi_ext <- ggplot() +
+  #geom_point(data = moisture_data, aes(x = mean_evi, y = pct_95, color = ecoregion_lvl), alpha = 0.1) +
+  geom_line(data = smooth_ext, aes(x = mean_evi, y = .estimate, color = ecoregion), size = 1.5, lineend = "round") +
+  geom_ribbon(data = smooth_ext, aes(x = mean_evi, ymin = .lower_ci, ymax = .upper_ci, fill = ecoregion), alpha = 0.2) +
+  labs(x = "Mean EVI (z-score)", title = "CMI", y = "Extreme Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_color_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen")) +
+  scale_fill_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"))
+
+evi_ext
+
+```
+
+
+```{r}
+
+# For median burn severity (m_cmi_median)
+# Get estimates for each ecoregion's pct_conf smooth
+smooth_btl <- smooth_estimates(m_cmi_median, smooth = "s(pct_conf):ecoregion_lvlBTL", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+smooth_ln <- smooth_estimates(m_cmi_median, smooth = "s(pct_conf):ecoregion_lvlLN", n = 100, partial = TRUE, unconditional = TRUE)  |> add_confint()
+smooth_lsj <- smooth_estimates(m_cmi_median, smooth = "s(pct_conf):ecoregion_lvlLSJ", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+
+# Combine into one data frame for plotting
+smooth_med <- bind_rows(
+  smooth_btl %>% mutate(ecoregion = "BTL"),
+  smooth_ln %>% mutate(ecoregion = "LN"),
+  smooth_lsj %>% mutate(ecoregion = "LSJ"))
+
+# Plot with overlaid lines per ecoregion
+conf_med <- ggplot() +
+  #geom_point(data = moisture_data, aes(x = pct_conf, y = median, color = ecoregion_lvl), alpha = 0.1) +
+  geom_line(data = smooth_med, aes(x = pct_conf, y = .estimate, color = ecoregion), size = 1.5, lineend = "round") +
+  geom_ribbon(data = smooth_med, aes(x = pct_conf, ymin = .lower_ci, ymax = .upper_ci, fill = ecoregion), alpha = 0.2) +
+  labs(x = "Percent Conifer Cover (z-score)", title = "VPD" ,y = "Median Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_color_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen")) +
+  scale_fill_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"))
+
+
+
+# For extreme burn severity (m_cmi_ext)
+smooth_btl_ext <- smooth_estimates(m_cmi_ext, smooth = "s(pct_conf):ecoregion_lvlBTL", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+smooth_ln_ext <- smooth_estimates(m_cmi_ext, smooth = "s(pct_conf):ecoregion_lvlLN", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+smooth_lsj_ext <- smooth_estimates(m_cmi_ext, smooth = "s(pct_conf):ecoregion_lvlLSJ", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+
+smooth_ext <- bind_rows(
+  smooth_btl_ext %>% mutate(ecoregion = "BTL"),
+  smooth_ln_ext %>% mutate(ecoregion = "LN"),
+  smooth_lsj_ext %>% mutate(ecoregion = "LSJ")
+)
+
+conf_ext <- ggplot() +
+  #geom_point(data = moisture_data, aes(x = pct_conf, y = pct_95, color = ecoregion_lvl), alpha = 0.1) +
+  geom_line(data = smooth_ext, aes(x = pct_conf, y = .estimate, color = ecoregion), size = 1.5, lineend = "round") +
+  geom_ribbon(data = smooth_ext, aes(x = pct_conf, ymin = .lower_ci, ymax = .upper_ci, fill = ecoregion), alpha = 0.2) +
+  labs(x = "Percent Conifer Cover (z-score)", title = "CMI", y = "Extreme Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_color_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen")) +
+  scale_fill_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"))
+
+conf_ext
+
+```
+```{r}
+conf_med + conf_ext + evi_med + evi_ext + plot_layout(ncol = 2) + 
+  plot_annotation(tag_levels = "A")
+
+# save
+ggsave(here("figures", "linear_predictor_plots_conifer_evi_smooth.png"), width = 10, height = 8)
+```
+
+
+# Deviance explained by each group
+
+```{r}
+as.data.frame(cmi_ext_hp$hierarchical.partitioning)
+
+I.cmi.ext <- cmi_ext_hp$hierarchical.partitioning |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "Variable") |> mutate(Variable = 
+    case_when(
+        Variable == "fire_weather" ~ "Fire Weather", 
+        Variable == "fuels" ~ "Fuels",
+        Variable == "moisture" ~ "Moisture"))
+
+I.cmi.median <- cmi_median_hp$hierarchical.partitioning |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "Variable") |> mutate(Variable = 
+    case_when(
+        Variable == "fire_weather" ~ "Fire Weather", 
+        Variable == "fuels" ~ "Fuels",
+        Variable == "moisture" ~ "Moisture"))
+I.vpd.ext <- vpd_ext_hp$hierarchical.partitioning |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "Variable") |> mutate(Variable = 
+    case_when(
+        Variable == "fire_weather" ~ "Fire Weather", 
+        Variable == "fuels" ~ "Fuels",
+        Variable == "moisture" ~ "Moisture"))
+I.vpd.median <- vpd_median_hp$hierarchical.partitioning |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "Variable") |> mutate(Variable = 
+    case_when(
+        Variable == "fire_weather" ~ "Fire Weather", 
+        Variable == "fuels" ~ "Fuels",
+        Variable == "moisture" ~ "Moisture"))
+
+
+# make 4 individual bar plots of I.perc(%) for each model where the x axis is I.perc(%) and fill is Variable
+
+p.cmi.med <- ggplot(I.cmi.median, aes(x = Variable, y = `I.perc(%)`, fill = Variable)) +
+  geom_col() +
+  geom_text(aes(label = paste0(round(`I.perc(%)`, 1), "%")), vjust = -0.5, size = 3.5) +
+  labs(title = "CMI Median", y = "Deviance Explained (%)", x = "") +
+  theme_bw() +
+  coord_cartesian(ylim = c(0, 100)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+        plot.title = element_text(hjust = 0.5, size = 12, face = "bold")) +
+  scale_fill_manual(values = c("Moisture" = "gray62", "Fire Weather" = "#CD0BBC", "Fuels" = "#F5C710")) +
+  guides(fill = "none")
+
+p.cmi.ext <- ggplot(I.cmi.ext, aes(x = Variable, y = `I.perc(%)`, fill = Variable)) +
+  geom_col() +
+  geom_text(aes(label = paste0(round(`I.perc(%)`, 1), "%")), vjust = -0.5, size = 3.5) +
+  labs(title = "CMI Extreme", y = NULL,  x = "") +
+  theme_bw() +
+  coord_cartesian(ylim = c(0, 100)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+        plot.title = element_text(hjust = 0.5, size = 12, face = "bold")) +
+  scale_fill_manual(values = c("Moisture" = "gray62", "Fire Weather" = "#CD0BBC", "Fuels" = "#F5C710")) +
+  guides(fill = "none")
+
+p.vpd.med <- ggplot(I.vpd.median, aes(x = Variable, y = `I.perc(%)`, fill = Variable)) +
+  geom_col() +
+  geom_text(aes(label = paste0(round(`I.perc(%)`, 1), "%")), vjust = -0.5, size = 3.5) +
+  labs(title = "VPD Median", y = "Deviance Explained (%)", x = "") +
+  theme_bw() +
+  coord_cartesian(ylim = c(0, 100)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+        plot.title = element_text(hjust = 0.5, size = 12, face = "bold")) +
+  scale_fill_manual(values = c("Moisture" = "gray62", "Fire Weather" = "#CD0BBC", "Fuels" = "#F5C710")) +
+  guides(fill = "none")
+
+p.vpd.ext <- ggplot(I.vpd.ext, aes(x = Variable, y = `I.perc(%)`, fill = Variable)) +
+  geom_col() +
+  geom_text(aes(label = paste0(round(`I.perc(%)`, 1), "%")), vjust = -0.5, size = 3.5) +
+  labs(title = "VPD Extreme", y = NULL, x = "") +
+  theme_bw() +
+  coord_cartesian(ylim = c(0, 100)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+        plot.title = element_text(hjust = 0.5, size = 12, face = "bold")) +
+  scale_fill_manual(values = c("Moisture" = "gray62", "Fire Weather" = "#CD0BBC", "Fuels" = "#F5C710")) +
+  guides(fill = "none")
+
+p.cmi.med <- place_label_inside(p.cmi.med, "a)")
+p.cmi.ext <- place_label_inside(p.cmi.ext, "b)")
+p.vpd.med <- place_label_inside(p.vpd.med, "c)")
+p.vpd.ext <- place_label_inside(p.vpd.ext, "d)")
+
+# combine plots using patchwork
+ p.vpd.med + p.vpd.ext + p.cmi.med + p.cmi.ext + plot_layout(ncol = 2) + 
+  plot_annotation(tag_levels = "A")
+
+# save
+ggsave(here("figures", "deviance_explained_by_variable_group_v2.png"), width = 5, height = 5)
+
+
+```
 
 # H4: are there lagged effects?
 
@@ -20,37 +232,37 @@ Analyzed lagged effects through visualization of the 2D smooths from the distrib
 
 ```{r}
 lsj <- scale_fill_viridis_c(
-        name = 'p(Median)',
+        name = 'Median\nBurn Severity',
         option = "D",
         guide = guide_colorbar(
-          direction = "horizontal",
+          direction = "vertical",
           title.position = "top",
           title.hjust = 0.5
         )
       ) 
 ln <- scale_fill_viridis_c(
-        name = 'p(Median)',
-        option = "E",
+        name = 'Median\nBurn Severity',
+        option = "F",
         guide = guide_colorbar(
-          direction = "horizontal",
+          direction = "vertical",
           title.position = "top",
           title.hjust = 0.5
         )
       ) 
 lsj_e <- scale_fill_viridis_c(
-        name = 'p(Extreme)',
+        name = 'Extreme\nBurn Severity',
         option = "D",
         guide = guide_colorbar(
-          direction = "horizontal",
+          direction = "vertical",
           title.position = "top",
           title.hjust = 0.5
         )
       ) 
 ln_e<- scale_fill_viridis_c(
-        name = 'p(Extreme)',
-        option = "E",
+        name = 'Extreme\nBurn Severity',
+        option = "F",
         guide = guide_colorbar(
-          direction = "horizontal",
+          direction = "vertical",
           title.position = "top",
           title.hjust = 0.5
         )
@@ -67,11 +279,11 @@ plot_vpd_btl
 
 estimates_lsj <- get_lag_estimates(m_vpd_median, lag_var = "L", smooth_var = "vpd", weights = "weights_lsj")
 plot_vpd_lsj <- plot_lag_smooth(m_vpd_median, estimates_lsj, "vpd", "L", "weights_lsj")
-plot_vpd_lsj + lsj
+plot_vpd_lsj <- plot_vpd_lsj + lsj
 
 estimates_ln <- get_lag_estimates(m_vpd_median, lag_var = "L", smooth_var = "vpd", weights = "weights_ln")
 plot_vpd_ln <- plot_lag_smooth(m_vpd_median, estimates_ln, "vpd", "L", "weights_ln")
-plot_vpd_ln + ln
+plot_vpd_ln <- plot_vpd_ln + ln
 
 
 ```
@@ -86,12 +298,12 @@ plot_cmi
 estimates_cmi_lsj <- get_lag_estimates(m_cmi_median, lag_var = "LL", smooth_var = "cmi_wy", weights = "weights_lsj2")
 plot_cmi_lsj <- plot_lag_smooth(m_cmi_median, estimates_cmi_lsj, "cmi_wy", "LL", "weights_lsj2")
 
-plot_cmi_lsj + lsj
+plot_cmi_lsg <- plot_cmi_lsj + lsj
 
 estimates_cmi_ln <- get_lag_estimates(m_cmi_median, lag_var = "LL", smooth_var = "cmi_wy", weights = "weights_ln2")
 plot_cmi_ln <- plot_lag_smooth(m_cmi_median, estimates_cmi_ln, "cmi_wy", "LL", "weights_ln2")
 
-plot_cmi_ln + ln
+plot_cmi_ln <- plot_cmi_ln + ln
 
 ```
 
@@ -105,11 +317,11 @@ plot_vpd_btl_ext
 
 estimates_lsj_ext <- get_lag_estimates(m_vpd_ext, lag_var = "L", smooth_var = "vpd", weights = "weights_lsj")
 plot_vpd_lsj_ext <- plot_lag_smooth(m_vpd_ext, estimates_lsj_ext, "vpd", "L", "weights_lsj")
-plot_vpd_lsj_ext + lsj_e
+plot_vpd_lsj_ext <- plot_vpd_lsj_ext + lsj_e
 
 estimates_ln_ext <- get_lag_estimates(m_vpd_ext, lag_var = "L", smooth_var = "vpd", weights = "weights_ln")
 plot_vpd_ln_ext <- plot_lag_smooth(m_vpd_ext, estimates_ln_ext, "vpd", "L", "weights_ln")
-plot_vpd_ln_ext + ln_e
+plot_vpd_ln_ext <- plot_vpd_ln_ext + ln_e
 ```
 
 
@@ -120,14 +332,211 @@ plot_cmi_ext
 
 estimates_cmi_lsj_ext <- get_lag_estimates(m_cmi_ext, lag_var = "LL", smooth_var = "cmi_wy", weights = "weights_lsj2")  
 plot_cmi_lsj_ext <- plot_lag_smooth(m_cmi_ext, estimates_cmi_lsj_ext, "cmi_wy", "LL", "weights_lsj2")
-plot_cmi_lsj_ext + lsj_e
+plot_cmi_lsj_ext <- plot_cmi_lsj_ext + lsj_e
 
 estimates_cmi_ln_ext <- get_lag_estimates(m_cmi_ext, lag_var = "LL", smooth_var = "cmi_wy", weights = "weights_ln2")  
 plot_cmi_ln_ext <- plot_lag_smooth(m_cmi_ext, estimates_cmi_ln_ext, "cmi_wy", "LL", "weights_ln2")
-plot_cmi_ln_ext + ln_e
+plot_cmi_ln_ext <- plot_cmi_ln_ext + ln_e 
 ```
+
+patchwork them together by median and ext
+```{r}
+
+# median
+
+top1 <- plot_vpd_btl + ggtitle("BTL") + theme(plot.title = element_text(face = "bold", hjust = 0.5))
+top2 <- plot_vpd_lsj + ggtitle("LSJ") + theme(plot.title = element_text(face = "bold", hjust = 0.5))
+top3 <- plot_vpd_ln  + ggtitle("LN")  + theme(plot.title = element_text(face = "bold", hjust = 0.5))
+
+p <- top1 + top2 + top3 + plot_cmi + plot_cmi_lsg + plot_cmi_ln +
+    plot_layout(ncol = 3) + plot_annotation(tag_levels = "A")
+
+p
+
+#save to figures
+ggsave(here("figures", "lagged_effects_median_v2.png"), width = 12, height = 8, dpi = 300)
+
+# extreme
+top1_e <- plot_vpd_btl_ext + ggtitle("BTL") + theme(plot.title = element_text(face = "bold", hjust = 0.5))
+top2_e <- plot_vpd_lsj_ext + ggtitle("LSJ") + theme(plot.title = element_text(face = "bold", hjust = 0.5))
+top3_e <- plot_vpd_ln_ext  + ggtitle("LN")  + theme(plot.title = element_text(face = "bold", hjust = 0.5))
+
+p_e <- top1_e + top2_e + top3_e + plot_cmi_ext + plot_cmi_lsj_ext + plot_cmi_ln_ext +
+    plot_layout(ncol = 3) + plot_annotation(tag_levels = "A")
+
+p_e
+#save to figures
+ggsave(here("figures", "lagged_effects_extreme_v2.png"), width = 12, height = 8, dpi = 300)
+
+```
+
+# steep slops
+
+## BTL
+```{r}
+# median vs extreme - vpd
+estimates_btl_steep <- get_steepest(estimates_btl)
+estimates_btl_ext <-  get_steepest(estimates_btl_ext)
+
+estimates_cmi_steep <-  estimates_cmi |> filter(`.estimate` == min(`.estimate`))
+estimates_cmi_ext_steep <- estimates_cmi_ext |> filter(tf == FALSE) |> filter(`.estimate` == min(`.estimate`)) 
+
+```
+
+## Lake Nipigon
+```{r}
+# Lake Nipigon
+# median vs extreme - ln vpd
+ln_steep_med <-  get_steepest(estimates_ln) 
+ln_steep_ext <-  get_steepest(estimates_ln_ext)
+
+# median vs extreme - ln cmi
+cmi_ln_steep_med <-  get_steepest(estimates_cmi_ln) 
+cmi_ln_steep_ext <-  get_steepest(estimates_cmi_ln_ext) 
+
+```
+
+## LSJ
+```{r}
+#  extreme lsj -cmi
+estimates_lsj_steep <-  estimates_lsj_ext |> filter(tf == FALSE)|> filter(`.estimate` == max(`.estimate`))
+estimates_cmi_lsj_steep <-  estimates_cmi_lsj_ext |> filter(`.estimate` == min(`.estimate`))
+
+
+```
+
+
+```{r}
+library(gratia)
+library(ggplot2)
+library(dplyr)
+
+# Load your model (e.g., m_vpd_median) and data
+# Assume moisture_data is loaded
+
+# Define low and high pct_conf levels (e.g., based on quantiles)
+low_pct_conf <- quantile(moisture_data$pct_conf, 0.25, na.rm = TRUE)  # e.g., 25th percentile for "low"
+high_pct_conf <- quantile(moisture_data$pct_conf, 0.75, na.rm = TRUE)  # 75th percentile for "high"
+
+# Slice data for lagged VPD effects at fixed pct_conf (set other covariates to means)
+ds_low <- data_slice(m_vpd_median, 
+                     vpd = evenly(vpd, n = 50), 
+                     L = evenly(L, n = 10), 
+                     pct_conf = low_pct_conf,  # Fix at low conifer
+                     mean_evi = mean(moisture_data$mean_evi, na.rm = TRUE),
+                     fwi_90th = mean(moisture_data$fwi_90th, na.rm = TRUE),
+                     weights_btl = 1)  # Assuming BTL for simplicity
+
+ds_high <- data_slice(m_vpd_median, 
+                      vpd = evenly(vpd, n = 50), 
+                      L = evenly(L, n = 10), 
+                      pct_conf = high_pct_conf,  # Fix at high conifer
+                      mean_evi = mean(moisture_data$mean_evi, na.rm = TRUE),
+                      fwi_90th = mean(moisture_data$fwi_90th, na.rm = TRUE),
+                      weights_btl = 1)
+
+# Get fitted values
+fv_low <- fitted_values(m_vpd_median, data = ds_low, scale = "response")
+fv_high <- fitted_values(m_vpd_median, data = ds_high, scale = "response")
+
+# Plot: Compare predicted severity vs. VPD at low vs. high pct_conf
+ggplot() +
+  geom_line(data = fv_low, aes(x = vpd, y = .fitted, color = "Low Conifer"), size = 1) +
+  geom_line(data = fv_high, aes(x = vpd, y = .fitted, color = "High Conifer"), size = 1) +
+  labs(x = "VPD (z-score)", y = "Predicted Median Burn Severity", 
+       title = "Moisture Effect Conditional on Conifer Cover") +
+  scale_color_manual(values = c("Low Conifer" = "red", "High Conifer" = "blue")) +
+  theme_minimal()
+deriv_low <- derivatives(m_vpd_median, data = ds_low, type = "central")
+
+model.data <- as.data.frame(m_vpd_median$model)
+
+ds_low <- data_slice(m_vpd_median, 
+                     vpd = evenly(vpd, n = 50), 
+                     L = evenly(L, n = 10), 
+                     pct_conf = low_pct_conf,
+                     mean_evi = mean(moisture_data$mean_evi, na.rm = TRUE),
+                     fwi_90th = mean(moisture_data$fwi_90th, na.rm = TRUE),
+                     weights_btl = 1,
+                     weights_ln = 0,  # Include all weight vars
+                     weights_lsj = 0,
+                     fyear = factor(levels(model.data$fyear)[1]),  # Add missing vars
+                     ecoregion_lvl = factor(levels(model.data$ecoregion_lvl)[1]))
+
+ds_high <- data_slice(m_vpd_median, 
+                      vpd = evenly(vpd, n = 50), 
+                      L = evenly(L, n = 10), 
+                      pct_conf = high_pct_conf,
+                      mean_evi = mean(moisture_data$mean_evi, na.rm = TRUE),
+                      fwi_90th = mean(moisture_data$fwi_90th, na.rm = TRUE),
+                      weights_btl = 1,
+                      weights_ln = 0,
+                      weights_lsj = 0,
+                      fyear = factor(levels(model.data$fyear)[1]),
+                      ecoregion_lvl = factor(levels(model.data$ecoregion_lvl)[1]))
+
+# Now derivatives should work
+deriv_low <- derivatives(m_vpd_median, select = "te(vpd,L):weights_btl", data = ds_low, type = "central")
+deriv_high <- derivatives(m_vpd_median, data = ds_high, type = "central")
+```
+
 
 
 # Cumulative effects plots
 
 
+
+```{r}
+#Assuming estimates_btl is already loaded
+avg_effect <- estimates_btl |> 
+  filter(tf == FALSE & L == 16) |> 
+  group_by(vpd) |> 
+  summarise(
+    avg_est = mean(.estimate, na.rm = TRUE),
+    se_mean = sd(.estimate, na.rm = TRUE) / sqrt(n()),
+    lower_ci = avg_est - 1.96 * se_mean,
+    upper_ci = avg_est + 1.96 * se_mean
+  )
+
+ggplot(avg_effect, aes(x = vpd, y = avg_est)) +
+  geom_line(color = "blue") +
+  geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), alpha = 0.2, fill = "blue") +
+  labs(title = "Average Effect of VPD Across All Lags (BTL)", 
+       x = "VPD (z-score)", 
+       y = "Average Estimated Effect on Severity") +
+  theme_minimal()
+
+
+draw(cv)
+
+min_median <- min(moisture_data$median, na.rm = TRUE)
+max_median <- max(moisture_data$median, na.rm = TRUE)
+min_vpd <- min(moisture_data$vpd, na.rm = TRUE)
+max_vpd <- max(moisture_data$vpd, na.rm = TRUE)
+
+model.data <- as.data.frame(m_vpd_median$model)
+
+# Create the prediction dataframe
+pred_data <- expand.grid(
+  vpd = seq(min_vpd, max_vpd, length.out = 100),
+  L = seq(1, 30, by = 1),
+  weights_btl = 1,
+  weights_ln = 0,
+  weights_lsj = 0,
+  pct_conf = mean(model.data$pct_conf, na.rm = TRUE),
+  fwi_90th = mean(model.data$fwi_90th, na.rm = TRUE),
+  mean_evi = mean(model.data$mean_evi, na.rm = TRUE),
+  fyear = factor(levels(model.data$fyear)[1]),
+  ecoregion_lvl = factor(levels(model.data$ecoregion_lvl)[1])
+)
+ds <- data_slice(m_cmi_median, cmi_wy = evenly(cmi_wy, n = 100), LL = evenly(LL, n = 30))
+
+fv1 <- fitted_values(m_cmi_median, data = ds, scale = "response", exclude = c("pct_conf", "fwi_90th", "mean_evi"))
+fv1
+
+ggplot() +
+ geom_line(data = fv1, aes(x = cmi_wy, y =.fitted)) +
+   scale_fill_viridis_c(name = "Predicted\nMedian Burn Severity") +
+   labs(x = "VPD (z-score)", y = "Lag (months)") +
+   theme_minimal()
+```

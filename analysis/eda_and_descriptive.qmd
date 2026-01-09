@@ -30,6 +30,15 @@ library(ggridges)
 moisture_data <- readRDS(here("data", "analysis_ready", "moisture_lagged_data.rds")) |> 
   filter(fire_size_ha > 200) |> 
   filter(ecoregion_lvl %in%c("LN", "BTL", "LSJ"))
+
+
+moisture_df <- moisture_df |>  
+  filter(fire_size_ha > 200) |> 
+  filter(ecoregion_lvl %in%c("LN", "BTL", "LSJ"))
+
+moisture_df <- moisture_df[-c(116, 141), ] %>%filter(median != 0) |> filter(pct_95 != 0)
+
+moisture_df <- moisture_df |> select(-c(mean_ndmi, mean_ndvi)) |>  drop_na()
 ```
 
 # ecoregion levels
@@ -57,18 +66,39 @@ ggplot(fires_per_year, aes(x = fyear, y = num_fires)) +
     labs(title = "Number of Fires per Year", x = "Year", y = "Number of Fires")
 
 # geom ridgline plot of median by year
-m_ridge <- ggplot(moisture_data, aes(x = median, y = as.factor(fyear), fill = ..x..)) +
-    geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01) +
-    scale_fill_viridis(name = "Median", option = "C") +
-    theme_minimal() +
-    labs(title = "Distribution of Median by Year", x = "Median", y = "Year")
+Use theme(legend.position = "none") and limit y-axis breaks to the four years. Replace the selection with:
 
-#geom ridgline of pct_95 by year
-q95_ridge <- ggplot(moisture_data, aes(x = pct_95, y = as.factor(fyear), fill = ..x..)) +
-    geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01) +
-    scale_fill_viridis(name = "95th Percentile", option = "C") +
-    theme_minimal() +
-    labs(title = "Distribution of Burn Severiy Extremes by Year", x = "95th Percentile Burn Severity", y = "Year")
+
+
+m_ridge <- {
+    yrs <- sort(unique(as.character(moisture_data$fyear)))
+    ggplot(moisture_data, aes(x = median, y = as.factor(fyear), fill = ..x..)) +
+        ggridges::geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01) +
+        scale_fill_viridis_c(option = "C") +
+        scale_y_discrete(
+            breaks = yrs,
+            labels = function(x) ifelse(x %in% c("1990", "2000", "2010", "2020"), x, "")
+        ) +
+        labs(x = "Median", y = "Year") +
+        theme_bw() +
+        theme(legend.position = "none")
+}
+
+q95_ridge <- {
+    yrs <- sort(unique(as.character(moisture_data$fyear)))
+    ggplot(moisture_data, aes(x = pct_95, y = as.factor(fyear), fill = ..x..)) +
+        ggridges::geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01) +
+        scale_fill_viridis_c(option = "C") +
+        scale_y_discrete(
+            breaks = yrs,
+            labels = function(x) ifelse(x %in% c("1990", "2000", "2010", "2020"), x, "")
+        ) +
+        labs(x = "Extreme Burn Severity", y = "Year") +
+        theme_bw() +
+        theme(legend.position = "none")
+}
+
+
 
 # create  table of fires per year using gt package
 
@@ -85,11 +115,11 @@ fy_tbl <- fires_per_year |>
 # patchwork group ridgeline plts and table
 library(patchwork)
 p1 <- (m_ridge | q95_ridge) +
-    plot_layout(heights = c(3, 1))
+    plot_layout(heights = c(3, 1)) + plot_annotation(tag_levels = 'A') 
 
 
 
-ggsave(here("figures", "fires_per_year_ridgeline.png"), width = 10, height = 6)
+ggsave(here("figures", "fires_per_year_ridgeline.png"), width = 6, height = 4)
 
 ```
 
@@ -111,7 +141,8 @@ burned_area_summary <- year_eco |>
     ungroup()
 
 # total burned area
-sum(year_eco$fire_size_ha)
+total_area_burned <- sum(year_eco$fire_size_ha)
+total_fires <- 667
 
 # total ecoregion
 ecoregion_summary <- year_eco |> 
@@ -121,21 +152,260 @@ ecoregion_summary <- year_eco |>
               mean_pct_95 = mean(pct_95),
               num_fires = n()) |> 
     ungroup()
+# ecoregion percent of total
+ecoregion_summary <- ecoregion_summary |> 
+    mutate(percent_total = (total_burned_ha / total_area_burned) * 100,
+    percent_fires = (num_fires / total_fires) * 100)
+
+
 
 ```
 
-#
+
+# trend over time
+```{r}
+library(trend)
+# Aggregate to annual means by ecoregion and year
+annual_data <- moisture_data %>%
+  mutate(year = as.numeric(as.character(fyear))) %>%  # Convert fyear factor to numeric
+  group_by(ecoregion_lvl, year) %>%
+  summarize(
+    mean_median = mean(median, na.rm = TRUE),
+    mean_pct_95 = mean(pct_95, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Calculate Sen's slope and p-values for each ecoregion
+trends <- annual_data %>%
+  group_by(ecoregion_lvl) %>%
+  summarize(
+    sen_median_slope = sens.slope(mean_median[order(year)])$estimates["Sen's slope"],
+    sen_median_p = sens.slope(mean_median[order(year)])$p.value,
+    sen_pct_95_slope = sens.slope(mean_pct_95[order(year)])$estimates["Sen's slope"],
+    sen_pct_95_p = sens.slope(mean_pct_95[order(year)])$p.value
+  )
+
+# View the results
+trends
+
+# lm trends
+lm_trends <- annual_data %>%
+  group_by(ecoregion_lvl) %>%
+  summarize(
+    lm_median_slope = coef(lm(mean_median ~ year))[2],
+    lm_median_p = summary(lm(mean_median ~ year))$coefficients[2, 4],
+    lm_pct_95_slope = coef(lm(mean_pct_95 ~ year))[2],
+    lm_pct_95_p = summary(lm(mean_pct_95 ~ year))$coefficients[2, 4]
+  )
+```
+
+Stacked bar plot with fire year on x and count on y with and colour = ecoregions
 ```{r}
 
+
+
+fy_plot <- ggplot(moisture_data, aes(x = as.integer(as.character(fyear)), fill = ecoregion_lvl)) +
+    geom_bar(position = "stack") +
+    scale_x_continuous(
+        breaks = c(1990, 1995, 2000, 2005, 2010, 2015, 2020),
+        labels = function(x) ifelse(x %in% c(1990, 2000, 2010, 2020), as.character(x), "")
+    ) +
+    scale_fill_manual(
+        values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"),
+        name = "Ecoregion"
+    ) +
+    labs(x = "Year", y = "Number of Fires") +
+    theme_bw()
+
+
+
+# years summary of mean median and pct_95 
+yearly_summary <- moisture_data %>%
+  group_by(fyear) %>%
+  summarize(
+    mean_median = mean(median, na.rm = TRUE),
+    mean_pct_95 = mean(pct_95, na.rm = TRUE)
+  ) |> arrange(desc(mean_pct_95))
+
+# make a boxplot of mean median and pct_95 by year with ecoregion as colour 
+med_y <- ggplot(moisture_data, aes(x = as.factor(fyear), y = median, fill = ecoregion_lvl)) +
+    geom_boxplot() +
+    scale_x_discrete(
+        breaks = c("1990", "1995", "2000", "2005", "2010", "2015", "2020"),
+        labels = function(x) ifelse(x %in% c("1990", "2000", "2010", "2020"), x, "")
+    ) +
+    scale_fill_manual(
+        values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"),
+        name = "Ecoregion"
+    ) +
+    labs(x = "Year", y = "Median Burn Severity") +
+    theme_bw()
+
+ext_y <- ggplot(moisture_data, aes(x = as.factor(fyear), y = pct_95, fill = ecoregion_lvl)) +
+    geom_boxplot() +
+    scale_x_discrete(
+        breaks = c("1990", "1995", "2000", "2005", "2010", "2015", "2020"),
+        labels = function(x) ifelse(x %in% c("1990", "2000", "2010", "2020"), x, "")
+    ) +
+    scale_fill_manual(
+        values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"),
+        name = "Ecoregion"
+    ) +
+    labs(x = "Year", y = "Extreme Burn Severity") +
+    theme_bw()
+
+
+
+# combine them with patchwork in ncol = 3
+# collect guides and move below plots
+
+
+
+p2 <- (fy_plot| med_y | ext_y) + plot_annotation(tag_levels = 'A') + 
+    plot_layout(guides = 'collect') & theme(legend.position = 'bottom')
+
+p3 <- (med_y / ext_y) + plot_annotation(tag_levels = 'A') + 
+    plot_layout(guides = 'collect') & theme(legend.position = 'bottom')
+
+fy_plot2 <- fy_plot + guides(color = "none", fill = "none", linetype = "none", shape = "none", size = "none")
+
+med_y2 <- med_y +  guides(color = "none", fill = "none", linetype = "none", shape = "none", size = "none")
+
+p4 <- (fy_plot2 + med_y2 + ext_y) + guide_area() + plot_layout(guides = 'collect' )+ plot_annotation(tag_levels = 'A') 
+
+p5 <- (fy_plot2 | med_y2 / ext_y) + plot_layout(guides = 'collect' )+ theme(legend.position = "bottom")+ plot_annotation(tag_levels = 'A') 
+
+# save it ggsave(here("figures", "fires_per_year_stacked.png"), width = 6, height = 4)
+ggsave(here("figures", "fires_per_year_median_ext_eco.png"), width = 10, height = 6)
+
 ```
+
+list of fires per year
+```{r}
+fires_per_year_ecoregion <- moisture_data %>%
+  group_by(fyear, ecoregion_lvl) %>%
+  summarize(num_fires = n()) %>%
+  arrange(fyear, ecoregion_lvl) |> arrange(desc(num_fires))
+
+fires_per_year <- moisture_data %>%
+  group_by(fyear) %>%
+  summarize(num_fires = n()) %>%
+  arrange(desc(num_fires))
+
+```
+
+ # fire size trends per ecoregion
+
+ ```{r}
+fire_size_trends <- moisture_data %>%
+  mutate(year = as.numeric(as.character(fyear))) %>%
+  group_by(ecoregion_lvl) %>%
+  summarize(
+    lm_fire_size_slope = coef(lm(fire_size_ha ~ year))[2],
+    lm_fire_size_p = summary(lm(fire_size_ha ~ year))$coefficients[2, 4]
+  )
+ ```
+
+
+# forest cover percent per ecoregion
+
+```{r}
+forest_cover <- moisture_df |> #non-scaled df
+    group_by(ecoregion_lvl) |> 
+    summarise(mean_conf_pct = mean(pct_conf, na.rm = TRUE),
+    mean_up_pct = mean(pct_up, na.rm = TRUE),
+    mean_wetland = mean(pct_wet, na.rm = TRUE))
+
+# variation in conifer percent per ecoregion
+forest_cover_sd <- moisture_df |> #non-scaled df
+    group_by(ecoregion_lvl) |> 
+    summarise(sd_conf_pct = sd(pct_conf, na.rm = TRUE),
+    sd_up_pct = sd(pct_up, na.rm = TRUE),
+    sd_wetland = sd(pct_wet, na.rm = TRUE))
+
+# mean evi per ecoregion
+evi_ecoregion <- moisture_df |> #non-scaled df
+    group_by(ecoregion_lvl) |> 
+    summarise(mean_evi = mean(mean_evi, na.rm = TRUE),
+    sd_evi = sd(mean_evi, na.rm = TRUE))
+
+# scatter plot of evi by burn severity
+ggplot(moisture_df, aes(x = mean_evi, y = median, color = ecoregion_lvl)) +
+    geom_point(alpha = 0.5) +
+    geom_smooth(method = "lm", se = FALSE) +
+    labs(x = "Mean EVI", y = "Median Burn Severity", color = "Ecoregion") +
+    theme_minimal()
+
+```
+
+# get different quantiles of pct_conf from moisture_df as dataframe
+```{r}
+#column to moisture_df classifying pct_conf into low, medium, high based on quantiles
+moisture_df <- moisture_df |> 
+  mutate(pct_conf_class = cut(pct_conf, 
+                              breaks = quantile(pct_conf, probs = c(0, 0.33, 0.67, 1), na.rm = TRUE),
+                              labels = c("Low", "Medium", "High"),
+                              include.lowest = TRUE))
+
+# correlation between pct_conf and median and pct_95 and different quantiles
+low_con <- moisture_df |> filter(pct_conf_class == "Low")
+
+cor(low_con$pct_conf, low_con$median, use="complete.obs")
+
+med_con <- moisture_df |> filter(pct_conf_class == "Medium")
+cor(med_con$pct_conf, med_con$median, use="complete.obs")
+
+high_con <- moisture_df |> filter(pct_conf_class == "High")
+cor(high_con$pct_conf, high_con$median, use="complete.obs")
+
+# relationship across quantiles
+ggplot(moisture_df, aes(x = pct_conf, y = median, color = pct_conf_class)) +
+    geom_point(alpha = 0.5) +
+    geom_smooth(method = "lm", se = FALSE) +
+    labs(x = "Percent Conifer Cover", y = "Median Burn Severity", color = "Conifer Cover Class") +
+    theme_minimal()
+
+ggplot(moisture_df, aes(x = pct_conf_class, y = median)) +
+  geom_boxplot() +
+  labs(x = "Conifer Class", y = "Median Burn Severity") +
+  theme_minimal()
+
+#ANOVA for severity differences by class
+aov_result <- aov(median ~ pct_conf_class, data = moisture_df)
+summary(aov_result)
+
+# Correlations by class (as in your session)
+low_con <- moisture_df %>% filter(pct_conf_class == "Low")
+med_con <- moisture_df %>% filter(pct_conf_class == "Medium")
+high_con <- moisture_df %>% filter(pct_conf_class == "High")
+
+cor(low_con$pct_conf, low_con$median, use = "complete.obs")  # Low class - very weak negative correlation, high conifer cover is slightly associated with lower severity  - negligible effect
+cor(med_con$pct_conf, med_con$median, use = "complete.obs")  # Medium - almost no relationship.
+cor(high_con$pct_conf, high_con$median, use = "complete.obs")  # High - Higher conifer cover is associated with higher severity.
+# This suggests a threshold effect. In low/medium conifer areas, pct_conf has little to no impact on severity (possibly due to other limiting factors like moisture). But in high-conifer areas (>~67% quantile), it becomes a driver, increasing severity—aligning with your hypotheses on fuel availability.
+
+
+# indentify threshold effects of pct_conf
+library(segmented)
+# fit linear model
+# Simple linear model first
+lm_model <- lm(median ~ pct_conf, data = moisture_data)
+
+# Fit segmented model (allows 1 breakpoint)
+seg_model <- segmented(lm_model, seg.Z = ~ pct_conf, npsi = 1)
+summary(seg_model)
+
+# Plot to visualize breakpoint
+plot(seg_model, res = TRUE, col = "red")  # Residuals and fit
+```
+
+
 
 # range of median and pct_95 
 
 ```{r}
 summary(moisture_data$median)
 summary(moisture_data$pct_95)
-range(moisture_data$median)
-range(moisture_data$pct_95)
 sd(moisture_data$median)
 sd(moisture_data$pct_95)
 ```
@@ -152,6 +422,8 @@ vars <- moisture_data |>
 
 
 ```{r}
+
+
 
 cor(moisture_data$pct_up, moisture_data$cmi_wy, use="complete.obs")
 cor(moisture_data$pct_up, moisture_data$vpd,    use="complete.obs")
@@ -287,10 +559,3 @@ ggplot(moisture_data, aes(x = mean_ndmi, y = pct_90)) +
 ```
 
 
-```{r}
-# how many fires inside vs outside aou
-aou_summary <- moisture_data |> 
-    group_by(aou) |> 
-    summarise(num_fires = n())
-print(aou_summary)
-```

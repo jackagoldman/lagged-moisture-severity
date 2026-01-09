@@ -1,4 +1,4 @@
-compare_models_cv <- function(model1, model2, data, response_var, cv_type = "repeated_holdout", k = 5, n_reps = 10, seed = 1) {
+compare_models_cv <- function(model1, model2, data, response_var, cv_type = "repeated_holdout", k = 5, n_reps = 10, seed = 1, return_folds = FALSE) {
   if (cv_type == "repeated_holdout") {
     rmse1_vec <- numeric(n_reps)
     rmse2_vec <- numeric(n_reps)
@@ -19,7 +19,11 @@ compare_models_cv <- function(model1, model2, data, response_var, cv_type = "rep
       rmse2_vec[i] <- sqrt(mean((test[[response_var]] - p2)^2, na.rm = TRUE))
     }
     
-    c(RMSE_model1 = mean(rmse1_vec), RMSE_model2 = mean(rmse2_vec))
+    if (return_folds) {
+      return(list(rmse1 = rmse1_vec, rmse2 = rmse2_vec))
+    } else {
+      c(RMSE_model1 = mean(rmse1_vec), RMSE_model2 = mean(rmse2_vec))
+    }
     
   } else if (cv_type == "kfold") {
     set.seed(seed)
@@ -46,7 +50,11 @@ compare_models_cv <- function(model1, model2, data, response_var, cv_type = "rep
       rmse2_vec[i] <- sqrt(mean((test[[response_var]] - p2)^2, na.rm = TRUE))
     }
     
-    c(RMSE_model1 = mean(rmse1_vec), RMSE_model2 = mean(rmse2_vec))
+    if (return_folds) {
+      return(list(rmse1 = rmse1_vec, rmse2 = rmse2_vec))
+    } else {
+      c(RMSE_model1 = mean(rmse1_vec), RMSE_model2 = mean(rmse2_vec))
+    }
     
   } else if (cv_type == "loo") {
     n <- nrow(data)
@@ -67,7 +75,11 @@ compare_models_cv <- function(model1, model2, data, response_var, cv_type = "rep
       rmse2_vec[i] <- sqrt((test[[response_var]] - p2)^2)
     }
     
-    c(RMSE_model1 = mean(rmse1_vec), RMSE_model2 = mean(rmse2_vec))
+    if (return_folds) {
+      return(list(rmse1 = rmse1_vec, rmse2 = rmse2_vec))
+    } else {
+      c(RMSE_model1 = mean(rmse1_vec), RMSE_model2 = mean(rmse2_vec))
+    }
   } else {
     stop("Invalid cv_type. Choose 'repeated_holdout', 'kfold', or 'loo'.")
   }

@@ -30,17 +30,10 @@ To achieve this goal, I'll test 4 hypotheses for short and long-term moisture co
 
 
 ```{r}
-library(ggplot2)
-library(tidyr)
-library(ggplot2)
-library(viridis)
-library(cowplot)
-library(patchwork)
-library(readr)
 library(mgcv)
-library(dlnm)
+library(gam.hp)
+library(tidyverse)
 library(here)
-library(gratia)
 ```
 
 
@@ -56,6 +49,10 @@ sum(is.na(moisture_data))
 moisture_data <- moisture_data |>  
   filter(fire_size_ha > 200) |> 
   filter(ecoregion_lvl %in%c("LN", "BTL", "LSJ"))
+
+moisture_data <- moisture_data[-c(116, 141), ] %>%filter(median != 0) |> filter(pct_95 != 0)
+
+
 ```
 
 # Build Full Models
@@ -66,33 +63,37 @@ moisture_data <- moisture_data |>
 ```{r}
 
 m_vpd_median <- gam(median ~ 
-       te(vpd, L,  by = weights_btl, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
-       te(vpd, L,  by = weights_ln, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
-       te(vpd, L,  by = weights_lsj, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
-         pct_conf + fwi_90th  +
-         mean_evi +  
-        s(fyear,bs = "re") +
+       te(vpd, L,  by = weights_btl, k = c(3,30), bs = c('tp', 'cr')) + # vpd with lag
+       te(vpd, L,  by = weights_ln, k = c(3,30), bs = c('tp', 'cr')) + # vpd with lag
+       te(vpd, L,  by = weights_lsj, k = c(3,30), bs = c('tp', 'cr')) + # vpd with lag
+         s(pct_conf, by = ecoregion_lvl, bs =c("tp", "fs")) +  
+         s(mean_evi, by = ecoregion_lvl, bs =c("tp", "fs")) + 
+         s(fwi_90th, by = ecoregion_lvl, bs =c("tp", "fs")) +
+        s(fyear, bs = "re") +
         s(ecoregion_lvl, bs = "re") ,
       data = moisture_data,
       family = scat(link = "identity"),
-      select = TRUE, 
+      select = TRUE,
       method = "REML")
 
 ```
 
 ```{r}
 m_vpd_ext <- gam(pct_95 ~ 
-       te(vpd, L,  by = weights_btl, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
-       te(vpd, L,  by = weights_ln, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
-       te(vpd, L,  by = weights_lsj, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
-         pct_conf+ fwi_90th  +
-         mean_evi +  
-        s(fyear,bs = "re") +
+       te(vpd, L,  by = weights_btl, k = c(3,30), bs = c('tp', 'cr')) + # vpd with lag
+       te(vpd, L,  by = weights_ln, k = c(3,30), bs = c('tp', 'cr')) + # vpd with lag
+       te(vpd, L,  by = weights_lsj, k = c(3,30), bs = c('tp', 'cr')) + # vpd with lag
+         s(pct_conf, by = ecoregion_lvl, bs =c("tp", "fs")) +  
+         s(mean_evi, by = ecoregion_lvl, bs =c("tp", "fs")) + 
+         s(fwi_90th, by = ecoregion_lvl, bs =c("tp", "fs")) +
+        s(fyear,bs = "re") + 
         s(ecoregion_lvl, bs = "re") ,
       data = moisture_data,
-      family = scat(link = "identity"),
       select = TRUE,
+      family = scat(link = "identity"),
       method = "REML")
+
+
 ```
 
 ## cmi
@@ -101,12 +102,12 @@ m_vpd_ext <- gam(pct_95 ~
 ```{r}
 
 m_cmi_median <- gam(median ~ 
-       te(cmi_wy, LL,  by = weights_btl2, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
-       te(cmi_wy, LL,   by = weights_ln2, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
-       te(cmi_wy, LL,   by = weights_lsj2, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag # cmi with 5 year lag
-        pct_conf + 
-        fwi_90th + 
-        mean_evi + 
+       te(cmi_wy, LL,  by = weights_btl2, k = c(5,5), bs = c('tp', 'cr')) + # vpd with lag
+       te(cmi_wy, LL,   by = weights_ln2, k = c(5,5), bs = c('tp', 'cr')) + # vpd with lag
+       te(cmi_wy, LL,   by = weights_lsj2, k = c(5,5), bs = c('tp', 'cr')) + # vpd with lag # cmi with 5 year lag
+        s(pct_conf, by = ecoregion_lvl, bs =c("tp", "fs")) +  
+         s(mean_evi, by = ecoregion_lvl, bs =c("tp", "fs")) + 
+         s(fwi_90th, by = ecoregion_lvl, bs =c("tp", "fs")) +
         s(fyear,bs = "re") +
         s(ecoregion_lvl, bs = "re") ,
       data = moisture_data,
@@ -118,12 +119,12 @@ m_cmi_median <- gam(median ~
 
 ```{r}
 m_cmi_ext <- gam(pct_95 ~ 
-       te(cmi_wy, LL,  by = weights_btl2, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
-       te(cmi_wy, LL,   by = weights_ln2, k = c(3,4), bs = c('tp', 'cr')) + # vpd with lag
+       te(cmi_wy, LL,  by = weights_btl2, k = c(5,5), bs = c('tp', 'cr')) + # vpd with lag
+       te(cmi_wy, LL,   by = weights_ln2, k = c(5,5), bs = c('tp', 'cr')) + # vpd with lag
        te(cmi_wy, LL,   by = weights_lsj2, k = c(5,5), bs = c('tp', 'cr')) + # vpd with lag # cmi with 5 year lag
-        pct_conf + 
-        fwi_90th + 
-        mean_evi + 
+        s(pct_conf, by = ecoregion_lvl, bs =c("tp", "fs")) +  
+         s(mean_evi, by = ecoregion_lvl, bs =c("tp", "fs")) + 
+         s(fwi_90th, by = ecoregion_lvl, bs =c("tp", "fs")) +
         s(fyear,bs = "re") +
         s(ecoregion_lvl, bs = "re") ,
       data = moisture_data,
@@ -149,6 +150,7 @@ vpd
 gam.check(m_vpd_median)
 ```
 
+
 cmi
 ```{r}
 gam.check(m_cmi_median)
@@ -161,22 +163,22 @@ checked hierarchical partitioning using gam.hp
 
 ## median
 ```{r}
-iv <- list(
-  moisture = c("te(vpd,L,by=weights_btl,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(vpd,L,by=weights_ln,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(vpd,L,by=weights_lsj,k=c(3,4),bs=c(\"tp\",\"cr\"))"), 
-  fire_weather = "fwi_90th",
-  fuels = c("pct_conf", "mean_evi"))
-vpd_median_hp <- gam.hp(m_vpd_median, iv)
+iv.v <- list(
+  moisture = c("te(vpd,L,by=weights_btl,k=c(3,30),bs=c(\"tp\",\"cr\"))", "te(vpd,L,by=weights_ln,k=c(3,30),bs=c(\"tp\",\"cr\"))", "te(vpd,L,by=weights_lsj,k=c(3,30),bs=c(\"tp\",\"cr\"))"), 
+  fire_weather = "s(fwi_90th,by=ecoregion_lvl)",
+  fuels = c("s(pct_conf, by= ecoregion_lvl)", "s(mean_evi, by = ecoregion_lvl)"))
+vpd_median_hp <- gam.hp(m_vpd_median, iv.v)
 vpd_median_hp
 ```
 
 Moisture contributes most to the model, explained 57% of the deviance compared to 39% for fuels and 2.1% for fire weather
 
 ```{r}
-iv <- list(
-  moisture = c("te(cmi_wy,LL,by=weights_btl2,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(cmi_wy,LL,by=weights_ln2,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(cmi_wy,LL,by=weights_lsj2,k=c(3,4),bs=c(\"tp\",\"cr\"))"), 
-  fire_weather = "fwi_90th",
-  fuels = c("pct_conf", "mean_evi"))
-cmi_median_hp <- gam.hp(m_cmi_median, iv)
+iv.c <- list(
+  moisture = c("te(cmi_wy,LL,by=weights_btl2,k=c(5,5),bs=c(\"tp\",\"cr\"))", "te(cmi_wy,LL,by=weights_ln2,k=c(5,5),bs=c(\"tp\",\"cr\"))", "te(cmi_wy,LL,by=weights_lsj2,k=c(5,5),bs=c(\"tp\",\"cr\"))"), 
+  fire_weather = "s(fwi_90th,by=ecoregion_lvl)",
+  fuels = c("s(pct_conf, by= ecoregion_lvl)", "s(mean_evi, by = ecoregion_lvl)"))
+cmi_median_hp <- gam.hp(m_cmi_median, iv.c)
 cmi_median_hp
 ```
 
@@ -186,11 +188,7 @@ Moisture contributes most to the model, explained 62% of the deviance compared t
 ## Extreme
 
 ```{r}
-iv <- list(
-  moisture = c("te(vpd,L,by=weights_btl,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(vpd,L,by=weights_ln,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(vpd,L,by=weights_lsj,k=c(3,4),bs=c(\"tp\",\"cr\"))"), 
-  fire_weather = "fwi_90th",
-  fuels = c("pct_conf", "mean_evi"))
-vpd_ext_hp <- gam.hp(m_vpd_ext, iv)
+vpd_ext_hp <- gam.hp(m_vpd_ext, iv.mv)
 vpd_ext_hp
 ```
 
@@ -198,17 +196,20 @@ Moisture contributes most to the model, explained 51.9% of the deviance compared
 However, fuels may be more important in predicting extreme burn severity compared to median burn severity 
 
 ```{r}
-iv <- list(
-  moisture = c("te(cmi_wy,LL,by=weights_btl2,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(cmi_wy,LL,by=weights_ln2,k=c(3,4),bs=c(\"tp\",\"cr\"))", "te(cmi_wy,LL,by=weights_lsj2,k=c(3,4),bs=c(\"tp\",\"cr\"))"), 
-  fire_weather = "fwi_90th",
-  fuels = c("pct_conf", "mean_evi"))
-cmi_ext_hp <- gam.hp(m_cmi_ext, iv)
+cmi_ext_hp <- gam.hp(m_cmi_ext, iv.c)
 cmi_ext_hp
 
 ```
 
 Moisture contributes most to the model, explained 61.4% of the deviance compared to 38.16% for fuels and 0.44% for fire weather
 
+save results
+```{r}
+saveRDS( vpd_median_hp, here("analysis", "results","vpd_median_hp.rds"))
+saveRDS(cmi_median_hp, here("analysis", "results","cmi_median_hp.rds"))
+saveRDS(vpd_ext_hp, here("analysis", "results","vpd_ext_hp.rds"))
+saveRDS(cmi_ext_hp, here("analysis", "results","cmi_ext_hp.rds"))
+```
 
 # H2: Are short-term or long-term moisture conditions more important?
 
@@ -216,12 +217,15 @@ Compare RMSE using CV
 
 Since we fit models with REML estimation, we cant compare models using AIC or ANOVA because the fixed effects structure differs between the models. Therefore, we preformed cross-validation to compare model performance using RMSE as the metric. The better model
 
+```{r}
+source(here("utils", "cv_functions.r"))
+```
+
 ## Median
 
 ```{r}
 
-compare_models_cv(m_vpd_median, m_cmi_median, moisture_data, response_var = "median")
-
+cv_results <- compare_models_cv(m_vpd_ext, m_cmi_ext, moisture_data, "median", cv_type = "kfold", k = 10, return_folds = TRUE)
 
 ```
 
@@ -230,7 +234,7 @@ Long-term is slightly better modely but nearly equivalent to short-term moisture
 ## Extreme
 
 ```{r}
-compare_models_cv(m_vpd_ext, m_cmi_ext, moisture_data, response_var = "pct_95")
+cv_results_ext <- compare_models_cv(m_vpd_ext, m_cmi_ext, moisture_data, response_var = "pct_95", k = 10)
 ```
 
 Long-term is slightly better modely but nearly equivalent to short-term moisture conditions
@@ -238,19 +242,34 @@ Long-term is slightly better modely but nearly equivalent to short-term moisture
 
 # H3: Are relationships consistent between median and extreme?
 
+```{r}
+source(here("utils", "table_functions.r"))
+```
 
 ## VPD
 ```{r}
-summary(m_vpd_median)
-summary(m_vpd_ext)
+vpd_med_sum <- make_gam_summary_table(m_vpd_median)
+vpd_ext_sum <- make_gam_summary_table(m_vpd_ext)
 
 ```
 
 ## CMI
 ```{r}
-summary(m_cmi_median)
-summary(m_cmi_ext)
+cmi_med_sum <- make_gam_summary_table(m_cmi_median)
+cmi_ext_sum <- make_gam_summary_table(m_cmi_ext)
 
+```
+
+combine gt tables together with med as first two and ext as second two
+```{r}
+# Combine all data
+all_data <- bind_rows(vpd_med_sum, cmi_med_sum, vpd_ext_sum, cmi_ext_sum) 
+
+# as gt
+all_data_table <- all_data |> gt()
+
+# Save the table
+gtsave(all_data_table, here("tables", "gam_summary_table_median_extreme_v3.docx"))
 ```
 
 
