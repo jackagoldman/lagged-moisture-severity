@@ -38,6 +38,9 @@ make_gam_summary_table <- function(model) {
   p_table <- summary(model)$p.table
   s_table <- summary(model)$s.table
   dev_expl <- summary(model)$dev.expl
+
+  # get model family 
+  model_family <- family(model)$family
   
   # Convert to data frames
   p_df <- as.data.frame(p_table)
@@ -80,17 +83,31 @@ make_gam_summary_table <- function(model) {
   options(scipen = 999)
 
   # round all columns but if p-value is <0.001 make <0.001
+  if (data.frame(model_family) ==  "gaussian"){
   p_df <- p_df %>%
-    mutate(`Pr(>|z|)` = ifelse(`Pr(>|z|)` < 0.001, "<0.001", round(`Pr(>|z|)`, 3))) %>%
-    mutate(across(c(Estimate, `Std. Error`, `z value`), ~ round(., 3)))
+    mutate(`Pr(>|t|)` = ifelse(`Pr(>|t|)` < 0.001, "<0.001", round(`Pr(>|t|)`, 3))) %>%
+    mutate(across(c(Estimate, `Std. Error`, `t value`), ~ round(., 3)))
+    # change p_df z value to Test statistic and Pr(>|z|) to p-value
+  colnames(p_df)[colnames(p_df) == "t value"] <- "Test statistic"
+  colnames(p_df)[colnames(p_df) == "Pr(>|t|)"] <- "p-value"
+  } else {
+    p_df <- p_df %>%
+      mutate(`Pr(>|z|)` = ifelse(`Pr(>|z|)` < 0.001, "<0.001", round(`Pr(>|z|)`, 3))) %>%
+      mutate(across(c(Estimate, `Std. Error`, `z value`), ~ round(., 3)))
+    # change p_df z value to Test statistic and Pr(>|z|) to p-value
+    colnames(p_df)[colnames(p_df) == "z value"] <- "Test statistic"
+    colnames(p_df)[colnames(p_df) == "Pr(>|z|)"] <- "p-value"
+  }
 
+  if (data.frame(model_family)== "gaussian"){
   s_df <- s_df %>%
     mutate(`p-value` = ifelse(`p-value` < 0.001, "<0.001", round(`p-value`, 3))) %>%
-    mutate(across(c(edf, Ref.df, Chi.sq), ~ round(., 3)))
- 
-  # change p_df z value to Test statistic and Pr(>|z|) to p-value
-  colnames(p_df)[colnames(p_df) == "z value"] <- "Test statistic"
-  colnames(p_df)[colnames(p_df) == "Pr(>|z|)"] <- "p-value"
+    mutate(across(c(edf, Ref.df, F), ~ round(., 3))) } else {
+    s_df <- s_df %>%
+      mutate(`p-value` = ifelse(`p-value` < 0.001, "<0.001", round(`p-value`, 3))) %>%
+      mutate(across(c(edf, Ref.df, Chi.sq), ~ round(., 3)))
+  }
+
   # add edf column with values of one before Test statistic and only keep edf, Test statistic, p-value
   p_df <- p_df %>%
     mutate(edf = 1) %>%
@@ -111,8 +128,11 @@ make_gam_summary_table <- function(model) {
   s_df$Term[4:12] <- sub(":.*", "", s_df$Term[4:12])
 
   # rename Chi.sq to Test statistic
+  if (data.frame(model_family) == "gaussian"){
+  colnames(s_df)[colnames(s_df) == "F"] <- "Test statistic"
+  } else {
   colnames(s_df)[colnames(s_df) == "Chi.sq"] <- "Test statistic"
-
+  }
   # to p_df add ecoregion column with values of -
   if (nrow(p_df) == 0) {
     combined <- s_df
@@ -150,7 +170,7 @@ make_gam_summary_table <- function(model) {
 
   
   return(combined)
-}
+  }
 
 
 

@@ -97,11 +97,11 @@ plot_lag_smooth <- function(model,
   response <- as.character(formula(model)[[2]])
   response_lab <- if (response == "median") "Median\nBurn Severity" else if (response == "pct_95") "Extreme\nBurn Severity" else response
   #if response = "median" set breaks  = 1:30, lmits = c(1,30) but if response = "pct_90" set breaks = 1:5, limits = c(1,5)
-  breaks <- if (smooth_var == "vpd") seq(1,30,5) else if (smooth_var == "cmi_wy") 1:5 else waiver()
-  limits <- if (smooth_var == "vpd") c(1,30) else if (smooth_var == "cmi_wy") c(1,5) else NULL
+  breaks <- if (smooth_var == "vpd") seq(1,30,5) else if (smooth_var == "cmi_wy") 1:5 else 1:4
+  limits <- if (smooth_var == "vpd") c(1,30) else if (smooth_var == "cmi_wy") c(1,5) else c(1,4)
   # base heatmap mapping columns by name
-  xlab<- if (smooth_var == "cmi_wy") "Lag (years before fire start)" else if (smooth_var == "vpd") "Lag (days before fire start)"
-  ylab <- if (smooth_var == "cmi_wy") "CMI (z-score)" else if (smooth_var == "vpd") "VPD (z-score)"
+  xlab<- if (smooth_var == "cmi_wy") "Lag (years before fire start)" else if (smooth_var == "vpd") "Lag (days before fire start)" else "Lag (weeks before fire start)"
+  ylab <- if (smooth_var == "cmi_wy") "CMI" else if (smooth_var == "vpd") "VPD"
   p <- ggplot(smooth_df, aes(x = .data[[lag_var]], y = .data[[smooth_var]],z =.estimate, fill = .estimate)) +
     geom_raster() +
     geom_contour(color = "grey50", size = 0.4) +

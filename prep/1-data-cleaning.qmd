@@ -45,14 +45,14 @@ For each GID filter date so that we only have dates within 30 days before fire s
 
 ```{r}
 vpd_30 <- vpd_data |> 
-    left_join(fire_info |> select(GID, start_date), by = "GID") |> 
+    left_join(fire_info |> dplyr::select(GID, start_date), by = "GID") |> 
     mutate(
         date = as.Date(date),
         start_date = as.Date(start_date)
     ) |> 
     filter(date >= (start_date - 30) & date < start_date) |>  # keep 1–30 days before start
     mutate(lag = as.integer(start_date - date)) |>            # lag = 1..30
-    select(-start_date)
+    dplyr::select(-start_date)
 
 ```
 
@@ -61,7 +61,7 @@ VPD matrix for distributed lag model
 Currently in long format, need to convert to wide format with each column as vpd for a specific lag and each row as a fire event (GID) but arrange columns by lag vpd_lag_1 to vpd_lag_30
 ```{r}
 vpd_wide = vpd_30 %>%
-    select(GID, lag, vpd) %>%
+    dplyr::select(GID, lag, vpd) %>%
     distinct(GID, lag, .keep_all = TRUE) %>%
     arrange(lag) %>%
     pivot_wider(names_from = lag, values_from = vpd, names_prefix = "vpd_") %>%
@@ -77,11 +77,54 @@ Save vpd_wide as vpd_30_wide.csv
 saveRDS(vpd_wide, here("data", "cleaned", "vpd_30_wide.rds"))
 ```
 
+# vpd 4 weeks wide
+
+```{r}
+vpd_4 <- vpd_data |> 
+    left_join(fire_info |> dplyr::select(GID, start_date), by = "GID") |> 
+    mutate(
+        date = as.Date(date),
+        start_date = as.Date(start_date)
+    ) |> 
+    filter(date >= (start_date - 30) & date < start_date) |>  # keep 1–30 days before start
+    # calculate the mean vpd for each week
+    mutate(week = case_when(
+        date >= (start_date - 7) & date < start_date ~ 1,
+        date >= (start_date - 14) & date < (start_date - 7) ~ 2,
+        date >= (start_date - 21) & date < (start_date - 14) ~ 3,
+        date >= (start_date - 30) & date < (start_date - 21) ~ 4,
+        TRUE ~ NA_real_
+    )) |>    group_by(GID, week) |>
+    summarize(vpd = mean(vpd, na.rm = TRUE), .groups = "drop") |>
+    # make lag 1-4 based on week
+    mutate(lag = as.integer(week)) |> 
+    dplyr::select(-week)
+```
+
+make wide
+
+```{r}
+vpd_wide_4 = vpd_4 %>%
+    dplyr::select(GID, lag, vpd) %>%
+    distinct(GID, lag, .keep_all = TRUE) %>%
+    arrange(lag) %>%
+    pivot_wider(names_from = lag, values_from = vpd, names_prefix = "vpd_") %>%
+    drop_na() |> 
+    arrange(GID)
+
+vpd_wide_4_gids = unique(vpd_wide_4$GID)
+nrow(vpd_wide_4)
+
+# save as vpd wide 4
+saveRDS(vpd_wide_4, here("data", "cleaned", "vpd_4_wide.rds"))
+```
+
+
 # vpd data cleaning for moving average over 30 days
 ```{r}
 
 vpd_ma_30 = vpd_data |> 
-    left_join(fire_info |> select(GID, start_date), by = "GID") |> 
+    left_join(fire_info |> dplyr::select(GID, start_date), by = "GID") |> 
     mutate(
         date = as.Date(date),
         start_date = as.Date(start_date)

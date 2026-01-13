@@ -33,7 +33,7 @@ evi_med <- ggplot() +
   #geom_point(data = moisture_data, aes(x = mean_evi, y = median, color = ecoregion_lvl), alpha = 0.1) +
   geom_line(data = smooth_med, aes(x = mean_evi, y = .estimate, color = ecoregion), size = 1.5, lineend = "round") +
   geom_ribbon(data = smooth_med, aes(x = mean_evi, ymin = .lower_ci, ymax = .upper_ci, fill = ecoregion), alpha = 0.2) +
-  labs(x = "Mean EVI (z-score)", title = "VPD", y = "Median Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
+  labs(x = "Mean EVI", title = "CMI", y = "Median Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5)) +
   scale_color_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen")) +
@@ -56,7 +56,7 @@ evi_ext <- ggplot() +
   #geom_point(data = moisture_data, aes(x = mean_evi, y = pct_95, color = ecoregion_lvl), alpha = 0.1) +
   geom_line(data = smooth_ext, aes(x = mean_evi, y = .estimate, color = ecoregion), size = 1.5, lineend = "round") +
   geom_ribbon(data = smooth_ext, aes(x = mean_evi, ymin = .lower_ci, ymax = .upper_ci, fill = ecoregion), alpha = 0.2) +
-  labs(x = "Mean EVI (z-score)", title = "CMI", y = "Extreme Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
+  labs(x = "Mean EVI", title = "CMI", y = "Extreme Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5)) +
   scale_color_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen")) +
@@ -66,7 +66,60 @@ evi_ext
 
 ```
 
+vpd
+```{r}
 
+
+# For median burn severity (m_vpd_median)
+# Get estimates for each ecoregion's pct_conf smooth
+smooth_btl <- smooth_estimates(m_vpd_median, smooth = "s(mean_evi):ecoregion_lvlBTL", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+smooth_ln <- smooth_estimates(m_vpd_median, smooth = "s(mean_evi):ecoregion_lvlLN", n = 100, partial = TRUE, unconditional = TRUE)  |> add_confint()
+smooth_lsj <- smooth_estimates(m_vpd_median, smooth = "s(mean_evi):ecoregion_lvlLSJ", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+
+# Combine into one data frame for plotting
+smooth_med <- bind_rows(
+  smooth_btl %>% mutate(ecoregion = "BTL"),
+  smooth_ln %>% mutate(ecoregion = "LN"),
+  smooth_lsj %>% mutate(ecoregion = "LSJ"))
+
+# Plot with overlaid lines per ecoregion
+evi_med_v <- ggplot() +
+  #geom_point(data = moisture_data, aes(x = mean_evi, y = median, color = ecoregion_lvl), alpha = 0.1) +
+  geom_line(data = smooth_med, aes(x = mean_evi, y = .estimate, color = ecoregion), size = 1.5, lineend = "round") +
+  geom_ribbon(data = smooth_med, aes(x = mean_evi, ymin = .lower_ci, ymax = .upper_ci, fill = ecoregion), alpha = 0.2) +
+  labs(x = "Mean EVI", title = "VPD", y = "Median Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_color_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen")) +
+  scale_fill_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"))
+
+
+
+# For extreme burn severity (m_vpd_ext)
+smooth_btl_ext <- smooth_estimates(m_vpd_ext, smooth = "s(mean_evi):ecoregion_lvlBTL", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+smooth_ln_ext <- smooth_estimates(m_vpd_ext, smooth = "s(mean_evi):ecoregion_lvlLN", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+smooth_lsj_ext <- smooth_estimates(m_vpd_ext, smooth = "s(mean_evi):ecoregion_lvlLSJ", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+
+smooth_ext <- bind_rows(
+  smooth_btl_ext %>% mutate(ecoregion = "BTL"),
+  smooth_ln_ext %>% mutate(ecoregion = "LN"),
+  smooth_lsj_ext %>% mutate(ecoregion = "LSJ")
+)
+
+evi_ext_v <- ggplot() +
+  #geom_point(data = moisture_data, aes(x = mean_evi, y = pct_95, color = ecoregion_lvl), alpha = 0.1) +
+  geom_line(data = smooth_ext, aes(x = mean_evi, y = .estimate, color = ecoregion), size = 1.5, lineend = "round") +
+  geom_ribbon(data = smooth_ext, aes(x = mean_evi, ymin = .lower_ci, ymax = .upper_ci, fill = ecoregion), alpha = 0.2) +
+  labs(x = "Mean EVI", title = "VPD", y = "Extreme Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_color_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen")) +
+  scale_fill_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"))
+
+evi_ext_v
+```
+
+## percent conifer cover
 ```{r}
 
 # For median burn severity (m_cmi_median)
@@ -86,7 +139,7 @@ conf_med <- ggplot() +
   #geom_point(data = moisture_data, aes(x = pct_conf, y = median, color = ecoregion_lvl), alpha = 0.1) +
   geom_line(data = smooth_med, aes(x = pct_conf, y = .estimate, color = ecoregion), size = 1.5, lineend = "round") +
   geom_ribbon(data = smooth_med, aes(x = pct_conf, ymin = .lower_ci, ymax = .upper_ci, fill = ecoregion), alpha = 0.2) +
-  labs(x = "Percent Conifer Cover (z-score)", title = "VPD" ,y = "Median Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
+  labs(x = "Percent Conifer Cover", title = "CMI" ,y = "Median Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5)) +
   scale_color_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen")) +
@@ -109,7 +162,7 @@ conf_ext <- ggplot() +
   #geom_point(data = moisture_data, aes(x = pct_conf, y = pct_95, color = ecoregion_lvl), alpha = 0.1) +
   geom_line(data = smooth_ext, aes(x = pct_conf, y = .estimate, color = ecoregion), size = 1.5, lineend = "round") +
   geom_ribbon(data = smooth_ext, aes(x = pct_conf, ymin = .lower_ci, ymax = .upper_ci, fill = ecoregion), alpha = 0.2) +
-  labs(x = "Percent Conifer Cover (z-score)", title = "CMI", y = "Extreme Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
+  labs(x = "Percent Conifer Cover", title = "CMI", y = "Extreme Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5)) +
   scale_color_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen")) +
@@ -118,14 +171,100 @@ conf_ext <- ggplot() +
 conf_ext
 
 ```
-```{r}
-conf_med + conf_ext + evi_med + evi_ext + plot_layout(ncol = 2) + 
-  plot_annotation(tag_levels = "A")
 
-# save
-ggsave(here("figures", "linear_predictor_plots_conifer_evi_smooth.png"), width = 10, height = 8)
+vpd 
+
+```{r}
+
+# For median burn severity (m_cmi_median)
+# Get estimates for each ecoregion's pct_conf smooth
+smooth_btl <- smooth_estimates(m_vpd_median, smooth = "s(pct_conf):ecoregion_lvlBTL", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+smooth_ln <- smooth_estimates(m_vpd_median, smooth = "s(pct_conf):ecoregion_lvlLN", n = 100, partial = TRUE, unconditional = TRUE)  |> add_confint()
+smooth_lsj <- smooth_estimates(m_vpd_median, smooth = "s(pct_conf):ecoregion_lvlLSJ", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+
+# Combine into one data frame for plotting
+smooth_med <- bind_rows(
+  smooth_btl %>% mutate(ecoregion = "BTL"),
+  smooth_ln %>% mutate(ecoregion = "LN"),
+  smooth_lsj %>% mutate(ecoregion = "LSJ"))
+
+# Plot with overlaid lines per ecoregion
+conf_med_v <- ggplot() +
+  #geom_point(data = moisture_data, aes(x = pct_conf, y = median, color = ecoregion_lvl), alpha = 0.1) +
+  geom_line(data = smooth_med, aes(x = pct_conf, y = .estimate, color = ecoregion), size = 1.5, lineend = "round") +
+  geom_ribbon(data = smooth_med, aes(x = pct_conf, ymin = .lower_ci, ymax = .upper_ci, fill = ecoregion), alpha = 0.2) +
+  labs(x = "Percent Conifer Cover", title = "VPD" ,y = "Median Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_color_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen")) +
+  scale_fill_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"))
+
+
+
+# For extreme burn severity (m_cmi_ext)
+smooth_btl_ext <- smooth_estimates(m_vpd_ext, smooth = "s(pct_conf):ecoregion_lvlBTL", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+smooth_ln_ext <- smooth_estimates(m_vpd_ext, smooth = "s(pct_conf):ecoregion_lvlLN", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+smooth_lsj_ext <- smooth_estimates(m_vpd_ext, smooth = "s(pct_conf):ecoregion_lvlLSJ", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+
+smooth_ext <- bind_rows(
+  smooth_btl_ext %>% mutate(ecoregion = "BTL"),
+  smooth_ln_ext %>% mutate(ecoregion = "LN"),
+  smooth_lsj_ext %>% mutate(ecoregion = "LSJ")
+)
+
+conf_ext_v <- ggplot() +
+  #geom_point(data = moisture_data, aes(x = pct_conf, y = pct_95, color = ecoregion_lvl), alpha = 0.1) +
+  geom_line(data = smooth_ext, aes(x = pct_conf, y = .estimate, color = ecoregion), size = 1.5, lineend = "round") +
+  geom_ribbon(data = smooth_ext, aes(x = pct_conf, ymin = .lower_ci, ymax = .upper_ci, fill = ecoregion), alpha = 0.2) +
+  labs(x = "Percent Conifer Cover", title = "VPD", y = "Extreme Burn Severity", color = "Ecoregion", fill = "Ecoregion") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_color_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen")) +
+  scale_fill_manual(values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"))
+
+conf_ext_v
 ```
 
+
+```{r}
+conf_med_v + conf_ext_v + conf_med + conf_ext + evi_med_v + evi_ext_v + evi_med + evi_ext + plot_layout(ncol = 2) +plot_layout(guides = 'collect') + plot_annotation(tag_levels = "A") 
+
+# save
+ggsave(here("figures", "linear_predictor_plots_conifer_evi_smooth.png"), width = 8, height = 10)
+```
+
+# Fire weather
+
+```{r}
+
+# For median burn severity (m_cmi_median)
+# Get estimates for each ecoregion's pct_conf smooth
+smooth_btl <- smooth_estimates(m_cmi_median, smooth = "s(fwi_90th):ecoregion_lvlBTL", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+smooth_ln <- smooth_estimates(m_cmi_median, smooth = "s(fwi_90th):ecoregion_lvlLN", n = 100, partial = TRUE, unconditional = TRUE)  |> add_confint()
+smooth_lsj <- smooth_estimates(m_cmi_median, smooth = "s(fwi_90th):ecoregion_lvlLSJ", n = 100, partial = TRUE, unconditional = TRUE) |> add_confint()
+
+
+
+# Plot with overlaid lines per ecoregion
+fwi_btl <- ggplot() +
+  #geom_point(data = moisture_data, aes(x = mean_evi, y = median, color = ecoregion_lvl), alpha = 0.1) +
+  geom_line(data = smooth_btl, aes(x = fwi_90th, y = .estimate), size = 1.5, lineend = "round") +
+  geom_ribbon(data = smooth_btl, aes(x = fwi_90th, ymin = .lower_ci, ymax = .upper_ci), alpha = 0.2) +
+  labs(x = "FWI 90th Percentile", y = "Median Burn Severity") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+fwi_lsj <- ggplot() +
+  #geom_point(data = moisture_data, aes(x = mean_evi, y = median, color = ecoregion_lvl), alpha = 0.1) +
+  geom_line(data = smooth_lsj, aes(x = fwi_90th, y = .estimate), size = 1.5, lineend = "round") +
+  geom_ribbon(data = smooth_lsj, aes(x = fwi_90th, ymin = .lower_ci, ymax = .upper_ci), alpha = 0.2) +
+  labs(x = "FWI 90th Percentile",  y = "Median Burn Severity") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+fwi_lsj + fwi_btl + plot_layout(ncol = 2) + plot_annotation(tag_levels = "A")
+
+```
 
 # Deviance explained by each group
 
@@ -209,10 +348,7 @@ p.vpd.ext <- ggplot(I.vpd.ext, aes(x = Variable, y = `I.perc(%)`, fill = Variabl
   scale_fill_manual(values = c("Moisture" = "gray62", "Fire Weather" = "#CD0BBC", "Fuels" = "#F5C710")) +
   guides(fill = "none")
 
-p.cmi.med <- place_label_inside(p.cmi.med, "a)")
-p.cmi.ext <- place_label_inside(p.cmi.ext, "b)")
-p.vpd.med <- place_label_inside(p.vpd.med, "c)")
-p.vpd.ext <- place_label_inside(p.vpd.ext, "d)")
+
 
 # combine plots using patchwork
  p.vpd.med + p.vpd.ext + p.cmi.med + p.cmi.ext + plot_layout(ncol = 2) + 
@@ -354,7 +490,7 @@ p <- top1 + top2 + top3 + plot_cmi + plot_cmi_lsg + plot_cmi_ln +
 p
 
 #save to figures
-ggsave(here("figures", "lagged_effects_median_v2.png"), width = 12, height = 8, dpi = 300)
+ggsave(here("figures", "lagged_effects_median_v4.png"), width = 12, height = 8, dpi = 300)
 
 # extreme
 top1_e <- plot_vpd_btl_ext + ggtitle("BTL") + theme(plot.title = element_text(face = "bold", hjust = 0.5))
@@ -366,7 +502,7 @@ p_e <- top1_e + top2_e + top3_e + plot_cmi_ext + plot_cmi_lsj_ext + plot_cmi_ln_
 
 p_e
 #save to figures
-ggsave(here("figures", "lagged_effects_extreme_v2.png"), width = 12, height = 8, dpi = 300)
+ggsave(here("figures", "lagged_effects_extreme_v4.png"), width = 12, height = 8, dpi = 300)
 
 ```
 
@@ -378,9 +514,9 @@ ggsave(here("figures", "lagged_effects_extreme_v2.png"), width = 12, height = 8,
 estimates_btl_steep <- get_steepest(estimates_btl)
 estimates_btl_ext <-  get_steepest(estimates_btl_ext)
 
-estimates_cmi_steep <-  estimates_cmi |> filter(`.estimate` == min(`.estimate`))
-estimates_cmi_ext_steep <- estimates_cmi_ext |> filter(tf == FALSE) |> filter(`.estimate` == min(`.estimate`)) 
-
+estimates_cmi_steep <-  get_steepest(estimates_cmi)
+estimates_cmi |> filter(tf == FALSE) |> filter(LL == max(LL))
+estimates_cmi_ext_steep <- get_steepest(estimates_cmi_ext)
 ```
 
 ## Lake Nipigon

@@ -10,6 +10,10 @@ format: html
 library(dplyr)
 library(tidyverse)
 library(readr)
+library(conflicted)
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+
 ```
 
 # Purpose
@@ -20,10 +24,11 @@ Making a VPD dataframe that is ready for analysis.
 ```{r}
 fire_info <- readRDS(here("data", "cleaned", "fire_info_cleaned.rds"))
 vpd_wide <- readRDS(here("data", "cleaned","vpd_30_wide.rds"))
+vpd_wide4 <- readRDS(here("data", "cleaned","vpd_4_wide.rds"))
 rbr <- readRDS(here("data", "cleaned","rbr_cleaned.rds"))
 vpd_ma <- readRDS(here("data", "cleaned","vpd_ma_30.rds"))
 landcover <- readRDS(here("data", "cleaned","landcover_cleaned.rds"))
-fwi <- read_csv(here("data", 'fwi_90th_duration_by_fire_full.csv'))
+fwi <- read_csv(here("data", 'fwi_95th_duration_by_fire_full.csv'))
 cmi_wide <- readRDS(here("data", "cleaned","cmi_wy_cleaned.rds"))
 ```
 
@@ -34,6 +39,7 @@ round_columns <- function(df) {
   return(df)
 }
 vpd_wide <- round_columns(vpd_wide)
+vpd_wide4 <- round_columns(vpd_wide4)
 cmi_wide <- round_columns(cmi_wide)
 vpd_ma <- round_columns(vpd_ma)
 landcover <- round_columns(landcover)
@@ -48,6 +54,7 @@ scale_columns <- function(df, columns) {
   return(df)
 }
 vpd_wide <- scale_columns(vpd_wide, colnames(vpd_wide)[-1])
+vpd_wide4 <- scale_columns(vpd_wide4, colnames(vpd_wide4)[-1])
 cmi_wide <- scale_columns(cmi_wide, colnames(cmi_wide)[-1])
 vpd_ma <- scale_columns(vpd_ma, colnames(vpd_ma)[-1])
 landcover <- scale_columns(landcover, colnames(landcover)[-1])
@@ -96,6 +103,12 @@ vpd_wide <- vpd_wide %>% filter(GID %in% moisture_final$GID)
 nrow(vpd_wide) # now matches moisture_final
 ```
 
+# remove rows in vpd wide 4
+
+```{r}
+vpd_wide4 <- vpd_wide4 %>% filter(GID %in% moisture_final$GID)
+nrow(vpd_wide4) # now matches moisture_final
+```
 
 ```{r}
 vpd_wide <- vpd_wide %>% arrange(GID) # make sure the GIDs are in the same order
@@ -103,6 +116,11 @@ vpd_matrix <- as.matrix(vpd_wide %>% select(-GID))
 head(vpd_matrix)
 ```
 
+```{r}
+vpd_wide4 <- vpd_wide4 %>% arrange(GID) # make sure the GIDs are in the same order
+vpd_matrix4 <- as.matrix(vpd_wide4 %>% select(-GID))
+head(vpd_matrix4)
+```
 
 ```{r}
 cmi_wide <- cmi_wide %>% arrange(GID) # make sure the GIDs are in the same order
@@ -114,6 +132,7 @@ get gids from cmi and vpd wide dataframes to make sure they match moisture_final
 ```{r}
 vpd_gids = unique(vpd_wide$GID)
 cmi_gids = unique(cmi_wide$GID)
+vpd4_gids = unique(vpd_wide4$GID)
 length(vpd_gids)
 length(cmi_gids) # 1212
 moisture_gids = unique(moisture_final$GID)
@@ -122,7 +141,7 @@ all(vpd_gids == moisture_gids) # TRUE
 all(cmi_gids == moisture_gids) # TRUE
 
 # remove gids in moisture_final that are not in both vpd_gids and cmi_gids
-moisture_final <- moisture_final %>% filter(GID %in% vpd_gids | GID %in% cmi_gids)
+moisture_final <- moisture_final %>% filter(GID %in% vpd_gids | GID %in% cmi_gids | GID %in% vpd4_gids)
 nrow(moisture_final) #
  # remove duplicate GIDs if any in moisture final
 moisture_final <- moisture_final %>% distinct(GID, .keep_all = TRUE)
@@ -149,6 +168,17 @@ head(L)
 
 ```
 
+```{r}
+# vpd_matrix4
+n <- nrow(vpd_matrix4)
+L4 <- ncol(vpd_matrix4)
+# create matrix L4 based on nrow and ncol of vpd_matrix4 where each column value is the lag index
+L4 <- matrix(NA, nrow = n, ncol = L4)
+for (i in 1:ncol(L4)) {
+  L4[, i] = i
+}
+head(L4)
+```
 
 ### cmi matrix
 
@@ -176,6 +206,10 @@ moisture_df$vpd <- vpd_matrix
 moisture_df$L = L
 ```
 
+```{r}
+moisture_df$vpd4 <- vpd_matrix4
+moisture_df$L4 = L4
+```
 ##cmi
 ```{r}
 moisture_df$cmi_wy = cmi_matrix
@@ -237,6 +271,26 @@ moisture_df$weights_pr <- weights_pr
 
 ```
 
+weights vpd4
+```{r}
+levels(moisture_df$ecoregion_lvl)
+weights_acp4 <- weights_btl4 <- weights_ln4 <- weights_lsj4 <- weights_lw4 <- weights_pr4 <- matrix(1, ncol = ncol(moisture_df$L4), nrow = nrow(moisture_df$L4))
+weights_acp4[!(moisture_df$ecoregion_lvl == 'ACP'), ] <- 0
+weights_btl4[!(moisture_df$ecoregion_lvl == 'BTL'), ] <- 0
+weights_ln4[!(moisture_df$ecoregion_lvl == 'LN'), ] <- 0
+weights_lsj4[!(moisture_df$ecoregion_lvl == 'LSJ'), ] <- 0
+weights_lw4[!(moisture_df$ecoregion_lvl == 'LW'), ] <- 0
+weights_pr4[!(moisture_df$ecoregion_lvl == 'PR'), ] <- 0
+#Adding these weighting matrices to the data list gives us all we need to set up group-level or hierarchical distributed lag terms(vpd4)
+moisture_df$weights_acp4 <- weights_acp4
+moisture_df$weights_btl4 <- weights_btl4
+moisture_df$weights_ln4 <- weights_ln4
+moisture_df$weights_lsj4 <- weights_lsj4
+moisture_df$weights_lw4 <- weights_lw4
+moisture_df$weights_pr4 <- weights_pr4
+```
+
+
 # weights cmi
 ```{r}
 levels(moisture_df$ecoregion_lvl)
@@ -265,22 +319,22 @@ moisture_df$weights_pr2 <- weights_pr2
 # ndvi, EVI, ndmi
 
 ```{r}
-ndvi_data <- read_csv(here("data", "bsw_fire_mean_ndvi.csv"))
-ndmi <- read_csv(here("data", "bsw_ndmi_pre_fire_stats.csv"))
+#ndvi_data <- read_csv(here("data", "bsw_fire_mean_ndvi.csv"))
+#ndmi <- read_csv(here("data", "bsw_ndmi_pre_fire_stats.csv"))
 evi <- read_csv(here("data", "fire_evi_stats.csv"))
 ```
 
 scale using function
 
 ```{r}
-ndvi_data <- scale_columns(ndvi_data, c("mean_ndvi"))
-ndmi <- scale_columns(ndmi, c("mean_ndmi"))
+#ndvi_data <- scale_columns(ndvi_data, c("mean_ndvi"))
+#ndmi <- scale_columns(ndmi, c("mean_ndmi"))
 evi <- scale_columns(evi, c("mean_evi"))
 ```
 
 ```{r}
-ndvi_data <- ndvi_data %>% distinct(GID, .keep_all = TRUE)
-ndmi <- ndmi %>% distinct(GID, .keep_all = TRUE)
+#ndvi_data <- ndvi_data %>% distinct(GID, .keep_all = TRUE)
+#ndmi <- ndmi %>% distinct(GID, .keep_all = TRUE)
 evi <- evi %>% distinct(GID, .keep_all = TRUE)
 
 
@@ -288,8 +342,8 @@ evi <- evi %>% distinct(GID, .keep_all = TRUE)
 
 ```{r}
 #left join to moisture_df by GID
-moisture_df <- moisture_df %>% left_join(ndvi_data %>% select(GID, mean_ndvi), by = "GID")
-moisture_df <- moisture_df %>% left_join(ndmi %>% select(GID, mean_ndmi), by = "GID")
+#moisture_df <- moisture_df %>% left_join(ndvi_data %>% select(GID, mean_ndvi), by = "GID")
+#moisture_df <- moisture_df %>% left_join(ndmi %>% select(GID, mean_ndmi), by = "GID")
 moisture_df <- moisture_df %>% left_join(evi %>% select(GID, mean_evi), by = "GID")
 ```
 
@@ -339,7 +393,7 @@ long_term_cmi <- read_csv(here("data", "cleaned","cmi_hogg_36_months_before_fire
 ```
 
 ```{r}
-saveRDS(moisture_df, here("data", "analysis_ready", "moisture_lagged_data.rds"))
+saveRDS(moisture_df, here("data", "analysis_ready", "moisture_lagged_non_scaled_data.rds"))
 
 
 ```
