@@ -27,18 +27,39 @@ library(ggridges)
 # Read in data
 
 ```{r}
-moisture_data <- readRDS(here("data", "analysis_ready", "moisture_lagged_data.rds")) |> 
-  filter(fire_size_ha > 200) |> 
-  filter(ecoregion_lvl %in%c("LN", "BTL", "LSJ"))
+moisture_data <- readRDS(here("data", "analysis_ready", "moisture_lagged_non_scaled_data.rds")) |>   drop_na()
+```
 
+# Fire Size
 
-moisture_df <- moisture_df |>  
-  filter(fire_size_ha > 200) |> 
-  filter(ecoregion_lvl %in%c("LN", "BTL", "LSJ"))
+```{r}
+sum(moisture_data$fire_size_ha)
+```
 
-moisture_df <- moisture_df[-c(116, 141), ] %>%filter(median != 0) |> filter(pct_95 != 0)
+fire size by ecoregion
+```{r}
+moisture_data |> 
+    group_by(ecoregion_lvl) |> 
+    summarise(total_fire_size_ha = sum(fire_size_ha))
 
-moisture_df <- moisture_df |> select(-c(mean_ndmi, mean_ndvi)) |>  drop_na()
+#get percent of total per ecoregion
+moisture_data |> 
+    group_by(ecoregion_lvl) |> 
+    summarise(total_fire_size_ha = sum(fire_size_ha)) |> 
+    mutate(percent_total = (total_fire_size_ha / sum(total_fire_size_ha)) * 100) 
+```
+
+fire size class distribution
+```{r}
+fire_size_class_counts <- moisture_data |> 
+    group_by(fire_size_class) |> 
+    summarise(count = n()) |> 
+    mutate(percent_total = (count / sum(count)) * 100)
+print(fire_size_class_counts)
+ggplot(fire_size_class_counts, aes(x = fire_size_class, y = count)) +
+    geom_bar(stat = "identity", fill = "steelblue") +
+    theme_minimal() +
+    labs(title = "Fire Size Class Distribution", x = "Fire Size Class", y = "Count of Fires")
 ```
 
 # ecoregion levels
@@ -52,13 +73,15 @@ ecoregion_counts <- moisture_data |>
 print(ecoregion_counts)
 ```
 
+
+
 # fires per year
 
 ```{r}
 fires_per_year <- moisture_data |> 
     group_by(fyear) |> 
-    summarise(num_fires = n())
-print(fires_per_year, n = Inf)
+    summarise(num_fires = n()) |> arrange(desc(num_fires))
+print(fires_per_year, n = Inf) 
 
 ggplot(fires_per_year, aes(x = fyear, y = num_fires)) +
     geom_bar(stat = "identity", fill = "steelblue") +
@@ -100,16 +123,6 @@ q95_ridge <- {
 
 
 
-# create  table of fires per year using gt package
-
-fy_tbl <- fires_per_year |> 
-    rename(Year = fyear, `Number of Fires` = num_fires) |> 
-    gt() |>
-    tab_options(
-        table.font.names = "Arial",
-        table.font.size = px(8)
-    ) 
-           
 
 
 # patchwork group ridgeline plts and table
@@ -127,9 +140,8 @@ ggsave(here("figures", "fires_per_year_ridgeline.png"), width = 6, height = 4)
 
 ```{r}
 year_eco <- moisture_data |> 
-    select(c(year, ecoregion_lvl, median, pct_95, fire_size_ha, mean_evi)) |> 
-    drop_na() |> 
-    select(-c(mean_evi))
+    select(c(year, ecoregion_lvl, median, pct_95, fire_size_ha)) |> 
+    drop_na() 
 
 #  total hectares burned per year and ecoregion and total
 burned_area_summary <- year_eco |> 
@@ -162,46 +174,11 @@ ecoregion_summary <- ecoregion_summary |>
 ```
 
 
-# trend over time
-```{r}
-library(trend)
-# Aggregate to annual means by ecoregion and year
-annual_data <- moisture_data %>%
-  mutate(year = as.numeric(as.character(fyear))) %>%  # Convert fyear factor to numeric
-  group_by(ecoregion_lvl, year) %>%
-  summarize(
-    mean_median = mean(median, na.rm = TRUE),
-    mean_pct_95 = mean(pct_95, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-# Calculate Sen's slope and p-values for each ecoregion
-trends <- annual_data %>%
-  group_by(ecoregion_lvl) %>%
-  summarize(
-    sen_median_slope = sens.slope(mean_median[order(year)])$estimates["Sen's slope"],
-    sen_median_p = sens.slope(mean_median[order(year)])$p.value,
-    sen_pct_95_slope = sens.slope(mean_pct_95[order(year)])$estimates["Sen's slope"],
-    sen_pct_95_p = sens.slope(mean_pct_95[order(year)])$p.value
-  )
-
-# View the results
-trends
-
-# lm trends
-lm_trends <- annual_data %>%
-  group_by(ecoregion_lvl) %>%
-  summarize(
-    lm_median_slope = coef(lm(mean_median ~ year))[2],
-    lm_median_p = summary(lm(mean_median ~ year))$coefficients[2, 4],
-    lm_pct_95_slope = coef(lm(mean_pct_95 ~ year))[2],
-    lm_pct_95_p = summary(lm(mean_pct_95 ~ year))$coefficients[2, 4]
-  )
-```
 
 Stacked bar plot with fire year on x and count on y with and colour = ecoregions
 ```{r}
 
+eco_colours <- c("BTL" = "gray30", "LN" = "orangered", "LSJ" = "firebrick", "LW" = "darkgreen", "PR" = "goldenrod", "ACP" = "deepskyblue4")
 
 
 fy_plot <- ggplot(moisture_data, aes(x = as.integer(as.character(fyear)), fill = ecoregion_lvl)) +
@@ -211,7 +188,7 @@ fy_plot <- ggplot(moisture_data, aes(x = as.integer(as.character(fyear)), fill =
         labels = function(x) ifelse(x %in% c(1990, 2000, 2010, 2020), as.character(x), "")
     ) +
     scale_fill_manual(
-        values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"),
+        values = eco_colours,
         name = "Ecoregion"
     ) +
     labs(x = "Year", y = "Number of Fires") +
@@ -228,28 +205,24 @@ yearly_summary <- moisture_data %>%
   ) |> arrange(desc(mean_pct_95))
 
 # make a boxplot of mean median and pct_95 by year with ecoregion as colour 
-med_y <- ggplot(moisture_data, aes(x = as.factor(fyear), y = median, fill = ecoregion_lvl)) +
-    geom_boxplot() +
+Add fill = "firebrick3" to geom_boxplot. Modified selection:
+
+
+med_y <- ggplot(moisture_data, aes(x = as.factor(fyear), y = median)) +
+    geom_boxplot(fill = "firebrick3") +
     scale_x_discrete(
         breaks = c("1990", "1995", "2000", "2005", "2010", "2015", "2020"),
         labels = function(x) ifelse(x %in% c("1990", "2000", "2010", "2020"), x, "")
-    ) +
-    scale_fill_manual(
-        values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"),
-        name = "Ecoregion"
-    ) +
+    )  +
     labs(x = "Year", y = "Median Burn Severity") +
     theme_bw()
 
-ext_y <- ggplot(moisture_data, aes(x = as.factor(fyear), y = pct_95, fill = ecoregion_lvl)) +
-    geom_boxplot() +
+
+ext_y <- ggplot(moisture_data, aes(x = as.factor(fyear), y = pct_95)) +
+    geom_boxplot(fill = "firebrick3") +
     scale_x_discrete(
         breaks = c("1990", "1995", "2000", "2005", "2010", "2015", "2020"),
         labels = function(x) ifelse(x %in% c("1990", "2000", "2010", "2020"), x, "")
-    ) +
-    scale_fill_manual(
-        values = c("BTL" = "gray60", "LN" = "darkorange", "LSJ" = "forestgreen"),
-        name = "Ecoregion"
     ) +
     labs(x = "Year", y = "Extreme Burn Severity") +
     theme_bw()
@@ -261,19 +234,19 @@ ext_y <- ggplot(moisture_data, aes(x = as.factor(fyear), y = pct_95, fill = ecor
 
 
 
-p2 <- (fy_plot| med_y | ext_y) + plot_annotation(tag_levels = 'A') + 
-    plot_layout(guides = 'collect') & theme(legend.position = 'bottom')
 
-p3 <- (med_y / ext_y) + plot_annotation(tag_levels = 'A') + 
-    plot_layout(guides = 'collect') & theme(legend.position = 'bottom')
 
-fy_plot2 <- fy_plot + guides(color = "none", fill = "none", linetype = "none", shape = "none", size = "none")
+fy_plot2 <- fy_plot + theme(
+    legend.position = c(0.98, 0.97),       # Position legend box at top-right of panel
+    legend.justification = c(1, 1), # Anchor the legend's top-right corner to that position
+    legend.background = element_rect(fill = "white", color = NA), # Optional: Add a white background without border
+    legend.margin = margin(t = 5, r = 5, b = 5, l = 5) ,
+    legend.key.size = unit(0.5, "cm")# Optional: Adjust margins around the legend content
+  ) 
 
-med_y2 <- med_y +  guides(color = "none", fill = "none", linetype = "none", shape = "none", size = "none")
+ea() + plot_layout(guides = 'collect' )+ plot_annotation(tag_levels = 'A') 
 
-p4 <- (fy_plot2 + med_y2 + ext_y) + guide_area() + plot_layout(guides = 'collect' )+ plot_annotation(tag_levels = 'A') 
-
-p5 <- (fy_plot2 | med_y2 / ext_y) + plot_layout(guides = 'collect' )+ theme(legend.position = "bottom")+ plot_annotation(tag_levels = 'A') 
+p5 <- (fy_plot2 | med_y / ext_y) + plot_annotation(tag_levels = 'A') 
 
 # save it ggsave(here("figures", "fires_per_year_stacked.png"), width = 6, height = 4)
 ggsave(here("figures", "fires_per_year_median_ext_eco.png"), width = 10, height = 6)
@@ -294,49 +267,52 @@ fires_per_year <- moisture_data %>%
 
 ```
 
- # fire size trends per ecoregion
-
- ```{r}
-fire_size_trends <- moisture_data %>%
-  mutate(year = as.numeric(as.character(fyear))) %>%
-  group_by(ecoregion_lvl) %>%
-  summarize(
-    lm_fire_size_slope = coef(lm(fire_size_ha ~ year))[2],
-    lm_fire_size_p = summary(lm(fire_size_ha ~ year))$coefficients[2, 4]
-  )
- ```
 
 
 # forest cover percent per ecoregion
 
 ```{r}
-forest_cover <- moisture_df |> #non-scaled df
+moisture_data |> #non-scaled df
     group_by(ecoregion_lvl) |> 
-    summarise(mean_conf_pct = mean(pct_conf, na.rm = TRUE),
-    mean_up_pct = mean(pct_up, na.rm = TRUE),
-    mean_wetland = mean(pct_wet, na.rm = TRUE))
+    summarise(mean_conf_pct = mean(pct_conf, na.rm = TRUE))
 
 # variation in conifer percent per ecoregion
-forest_cover_sd <- moisture_df |> #non-scaled df
+ moisture_data |> #non-scaled df
     group_by(ecoregion_lvl) |> 
-    summarise(sd_conf_pct = sd(pct_conf, na.rm = TRUE),
-    sd_up_pct = sd(pct_up, na.rm = TRUE),
-    sd_wetland = sd(pct_wet, na.rm = TRUE))
+    summarise(sd_conf_pct = sd(pct_conf, na.rm = TRUE))
 
-# mean evi per ecoregion
-evi_ecoregion <- moisture_df |> #non-scaled df
-    group_by(ecoregion_lvl) |> 
-    summarise(mean_evi = mean(mean_evi, na.rm = TRUE),
-    sd_evi = sd(mean_evi, na.rm = TRUE))
 
 # scatter plot of evi by burn severity
-ggplot(moisture_df, aes(x = mean_evi, y = median, color = ecoregion_lvl)) +
+ggplot(moisture_data, aes(x = pct_conf, y = median, color = ecoregion_lvl)) +
     geom_point(alpha = 0.5) +
-    geom_smooth(method = "lm", se = FALSE) +
-    labs(x = "Mean EVI", y = "Median Burn Severity", color = "Ecoregion") +
+    labs(x = "Percent Conifer Cover", y = "Median Burn Severity", color = "Ecoregion") +
+    theme_minimal()
+
+# scatter plot of evi by burn severity
+ggplot(moisture_data, aes(x = pct_conf, y = pct_95, color = ecoregion_lvl)) +
+    geom_point(alpha = 0.5) +
+    labs(x = "Percent Conifer Cover", y = "Extreme Burn Severity", color = "Ecoregion") +
     theme_minimal()
 
 ```
+
+```{r}
+moisture_data |> 
+    group_by(ecoregion_lvl) |> summarise(mean_dc = mean(dc_90th))
+
+# scatter plot of evi by burn severity
+ggplot(moisture_data, aes(x = dc_90th, y = median, color = ecoregion_lvl)) +
+    geom_point(alpha = 0.5) +
+    labs(x = "Drought Code", y = "Median Burn Severity", color = "Ecoregion") +
+    theme_minimal()
+
+# scatter plot of evi by burn severity
+ggplot(moisture_data, aes(x = dc_90th, y = pct_95, color = ecoregion_lvl)) +
+    geom_point(alpha = 0.5) +
+    labs(x = "Drought Code", y = "Extreme Burn Severity", color = "Ecoregion") +
+    theme_minimal()
+```
+
 
 # get different quantiles of pct_conf from moisture_df as dataframe
 ```{r}
@@ -435,8 +411,260 @@ range(moisture_df$pct_up);  range(moisture_df$pct_up)
 
 ```
 
-# correlation between continuous variables except vpd and L
 
+# trend in cmi and vpd over time
+
+get cmi wy
+
+```{r}
+cmi <- read_csv(here("data",  "cmi_hogg_water_year_anomaly.csv"))
+
+# grom GID in cmi, take every before the _ and make new column year
+cmi <- cmi |> 
+    dplyr::mutate(year = as.integer(sub("_.*", "", GID)))
+
+#plot avg_cmi_anomaly by water year
+ggplot(cmi, aes(x = water_year, y = avg_cmi_anomaly)) +
+    geom_line(color = "blue") +
+    geom_point() +
+    theme_minimal() +
+    labs(title = "Average CMI Anomaly by Water Year", x = "Water Year", y = "Average CMI Anomaly")
+
+# get trend using gam
+gam_cmi <- gam(avg_cmi_anomaly ~ s(water_year, bs = "cc", k = 37), data = cmi, method = "REML")
+summary(gam_cmi)
+
+# plot the gam fit
+plot(gam_cmi, shade = TRUE, main = "GAM Fit for Average CMI Anomaly over Water Years") 
+
+
+# how do i get trend from gam
+library(mgcv)
+library(gratia)
+ctrl <- list(niterEM = 0, msVerbose = TRUE, optimMethod="L-BFGS-B")
+
+m2 <- gamm(avg_cmi_anomaly ~ s(water_year, bs = "cc", k = 37) ,
+           data = cmi, correlation = corARMA(form = ~ 1|year, p = 2),
+           control = ctrl)
+summary(m2$lme)
+plot(m2$gam, shade = TRUE, main = "GAMM Fit for Average CMI Anomaly over Water Years")
+
+# average cmi per year
+df_cmi <- cmi |> 
+    group_by(water_year) |> 
+    summarise(cmi_anom = mean(avg_cmi_anomaly, na.rm = TRUE))
+# average rbr per year
+df_sev <- rbr |> 
+    group_by(year) |> 
+    summarise(mean_rbr = mean(median, na.rm = TRUE))
+
+# as xts
+df_cmi_xts <- xts::xts(df_cmi$cmi_anom, order.by = as.Date(paste0(df_cmi$water_year, "-10-01")))
+df_sev_xts <- xts::xts(df_sev$mean_rbr, order.by = as.Date(paste0(df_sev$year, "-01-01")))
+
+xts::plot.xts(df_cmi_xts, main = "Average CMI Anomaly Over Water Years", ylab = "CMI Anomaly", xlab = "Year", col = "blue")
+xts::plot.xts(df_sev_xts, main = "Average Median Burn Severity Over Years", ylab = "Median Burn Severity", xlab = "Year", col = "red")
+
+# CMI anomaly and median burn severity together
+
+
+# can you plot both on same plot with two y axes and x axis of water_year
+library(ggplot2)
+df_combined <- df_cmi %>%
+  inner_join(df_sev, by = c("water_year" = "year"))
+ggplot(df_combined, aes(x = water_year)) + 
+  geom_line(aes(y = cmi_anom, color = "CMI Anomaly")) +
+  geom_line(aes(y = mean_rbr, color = "Median Burn Severity")) +
+  scale_y_continuous(
+    name = "CMI Anomaly",
+    sec.axis = sec_axis(~ ., name = "Median Burn Severity")
+  ) +
+  labs(x = "Year", title = "Average CMI Anomaly and Median Burn Severity Over Years") +
+  scale_color_manual(values = c("CMI Anomaly" = "blue", "Median Burn Severity" = "red")) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# Create all 1..5 lags relative to fire year t
+lags <- 1:5
+
+# If you ALREADY have df_cmi$fire_year (preferred):
+if ("fire_year" %in% names(df_cmi)) {
+  df_lags <- df_cmi %>%
+    filter(fire_year >= min(df_sev$year), fire_year <= max(df_sev$year)) %>%
+    mutate(lag = fire_year - water_year) %>%
+    filter(lag %in% lags) %>%
+    select(fire_year, lag, cmi_anom) %>%
+    pivot_wider(names_from = lag, values_from = cmi_anom,
+                names_prefix = "cmi_lag_") %>%
+    arrange(fire_year) %>%
+    rename(year = fire_year)
+} else {
+  # Map by arithmetic: for each fire year t, CMI anomaly at t-k
+  df_lags <- expand_grid(year = df_sev$year, lag = lags) %>%
+    mutate(water_year = year - lag) %>%
+    left_join(df_cmi, by = "water_year") %>%
+    select(year, lag, cmi_anom) %>%
+    pivot_wider(names_from = lag, values_from = cmi_anom,
+                names_prefix = "cmi_lag_") %>%
+    arrange(year)
+}
+
+
+# Combine with severity
+df_all <- df_sev %>%
+  left_join(df_lags, by = "year")
+
+# Keep only years with complete lag window
+df_all <- df_all %>%
+  filter(if_all(starts_with("cmi_lag_"), ~ !is.na(.x)))
+
+
+# Equal weights across 1..5 years
+w_equal <- rep(1/5, 5)
+
+# Triangular weights (more weight to 4-5 years)
+w_tri <- c(0.10, 0.15, 0.25, 0.25, 0.25)
+
+# Use one set (switch if you prefer)
+w <- w_equal  # or w_tri
+
+lag_cols <- paste0("cmi_lag_", 1:5)
+
+df_all <- df_all %>%
+  mutate(
+    cmi_star = as.numeric(as.matrix(select(., all_of(lag_cols))) %*% w)
+  )
+
+
+# Standardize for comparability (z-scores)
+df_all <- df_all %>%
+  mutate(
+    sev_z = scale(mean_rbr)[,1],
+    cmi_star_z = scale(cmi_star)[,1]
+  )
+
+# Convert to zoo
+z_sev  <- zoo(df_all$sev_z, order.by = df_all$year)
+z_cmi  <- zoo(df_all$cmi_star_z, order.by = df_all$year)
+
+# LOESS smoothing helper for irregular yearly index
+loess_smooth <- function(y, x, span = 0.4, degree = 1) {
+  fit <- loess(y ~ x, span = span, degree = degree, surface = "direct", control = loess.control(trace.hat = "approx"))
+  tibble(x = x, y = y, y_hat = predict(fit))
+}
+
+smooth_sev <- loess_smooth(y = coredata(z_sev), x = as.numeric(time(z_sev)), span = 0.4)
+smooth_cmi <- loess_smooth(y = coredata(z_cmi), x = as.numeric(time(z_cmi)), span = 0.4)
+
+# Merge smoothed curves back to calendar years
+df_smooth <- tibble(
+  year = index(z_sev),
+  sev_z = coredata(z_sev),
+  cmi_star_z = coredata(z_cmi),
+  sev_loess = smooth_sev$y_hat,
+  cmi_loess = smooth_cmi$y_hat
+)
+
+library(scales)
+ggplot(df_smooth, aes(x = year)) +
+  geom_line(aes(y = sev_z), color = "grey60", linewidth = 0.7, alpha = 0.6) +
+  geom_line(aes(y = sev_loess), color = "#2c7fb8", linewidth = 1.4) +
+  geom_line(aes(y = cmi_star_z), color = "grey70", linewidth = 0.7, alpha = 0.6) +
+  geom_line(aes(y = cmi_loess), color = "#d95f0e", linewidth = 1.4) +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  labs(x = "Year",
+       y = "Standardized value (z-score)",
+       title = "Median Burn Severity vs. Lag-weighted CMI Anomaly (LOESS-smoothed)",
+       subtitle = "Both series standardized; LOESS span = 0.4") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.minor = element_blank(),
+        plot.title.position = "plot")
+
+
+# Gather long for easy iteration
+df_long <- df_all %>%
+  select(year, mean_rbr, all_of(lag_cols), cmi_star) %>%
+  pivot_longer(cols = starts_with("cmi_lag_"),
+               names_to = "lag_name", values_to = "cmi_anom_lag") %>%
+  mutate(lag = as.integer(sub("cmi_lag_", "", lag_name)))
+
+# Spearman correlation by lag
+cor_by_lag <- df_long %>%
+  group_by(lag) %>%
+  summarize(
+    n = n(),
+    spearman_rho = cor(mean_rbr, cmi_anom_lag, method = "spearman", use = "complete.obs"),
+    kendall_tau  = cor(mean_rbr, cmi_anom_lag, method = "kendall", use = "complete.obs"),
+    .groups = "drop"
+  ) %>%
+  mutate(lag = factor(lag, levels = 1:5))
+
+# With simple permutation CIs for Spearman (optional)
+set.seed(123)
+perm_spearman <- function(x, y, B = 5000) {
+  obs <- suppressWarnings(cor(x, y, method = "spearman"))
+  null <- replicate(B, {
+    y_perm <- sample(y, replace = FALSE)
+    suppressWarnings(cor(x, y_perm, method = "spearman"))
+  })
+  ci <- quantile(null, probs = c(0.025, 0.975), na.rm = TRUE)
+  p  <- mean(abs(null) >= abs(obs))
+  list(obs = obs, lwr = ci[1], upr = ci[2], p_perm = p)
+}
+
+cor_perm <- df_long %>%
+  group_by(lag) %>%
+  summarize({
+    r <- perm_spearman(mean_rbr, cmi_anom_lag, B = 3000)
+    tibble(spearman_obs = r$obs, ci_lwr = r$lwr, ci_upr = r$upr, p_perm = r$p_perm)
+  }, .groups = "drop")
+
+cor_by_lag$lag <- as.integer(as.character(cor_by_lag$lag))
+
+cor_results <- left_join(cor_by_lag, cor_perm, by = "lag")
+
+print(cor_results)
+
+# Correlation with composite index (CMI*)
+cor_composite <- tibble(
+  n = nrow(df_all),
+  spearman_rho = cor(df_all$mean_rbr, df_all$cmi_star, method = "spearman"),
+  kendall_tau  = cor(df_all$mean_rbr, df_all$cmi_star, method = "kendall")
+)
+print(cor_composite)
+
+ 
+
+
+
+ggplot(cor_results, aes(x = lag, y = spearman_obs)) +
+  geom_hline(yintercept = 0, color = "grey70") +
+  geom_point(size = 3, color = "#2c7fb8") +
+  geom_errorbar(aes(ymin = ci_lwr, ymax = ci_upr), width = 0.15, color = "#2c7fb8") +
+  labs(x = "Lag (years before fire)", y = "Spearman correlation",
+       title = "Association between Median Severity and Lagged CMI Anomalies",
+       subtitle = "Points: observed rho; bars: permutation null 95% CI") +
+  theme_minimal(base_size = 12)
+
+
+
+
+# read in rbr data
+rbr <- readRDS(here("data", "cleaned", "rbr_cleaned.rds"))
+
+rbr <- rbr |> 
+    mutate(year = as.integer(gsub("_.*", "", GID)))
+
+gam.rbr <- gam(median ~ s(year, k = 34), data = rbr, method = "REML")
+summary(gam.rbr)
+
+plot.zoo(rbr_ts)
+
+# plot the gam fit
+plot(gam.rbr, shade = TRUE, main = "GAM Fit for RBR Median over Years")
+
+# correlation between continuous variables except vpd and L
+```
 ```{r}
 colnames(moisture_data)
 cor_matrix <- moisture_data |> 

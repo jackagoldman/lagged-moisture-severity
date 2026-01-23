@@ -138,6 +138,9 @@ vpd_ma_30 = vpd_data |>
         .groups = "drop"
     ) |> 
     drop_na() 
+
+
+
 ```
 
 Save vpd_ma_30 
