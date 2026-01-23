@@ -230,6 +230,150 @@ vpd_e_q <- ggplot(extreme_vpd_all, aes(x = L, y = fit, color = quartile)) +
 vpd_m_q + vpd_e_q 
 ```
 
+# vpd  uncertainty
+
+This code creates uncertainty plots for median VPD quartiles 5, 25, 50, and 75 by filtering the combined dataset for each quartile and plotting the partial effects with individual simulation lines and the median fit line overlaid in blue.
+
+## median
+```{r}
+median_vpd_unct <- rbind(median_5_v$curves,
+                        median_25_v$curves,
+                        median_50_v$curves,
+                        median_75_v$curves)
+plot_colours <- c("5%" = "gray30", "25%" = "orangered", "50%" = "firebrick", "75%" = "darkgreen")
+median_vpd_unct$quartile <- factor(median_vpd_unct$quartile, levels = c("5%", "25%", "50%", "75%"))
+
+med_5 <- median_5_v$median
+med_25 <- median_25_v$median
+med_50 <- median_50_v$median
+med_75 <- median_75_v$median
+
+
+# uncertaint median vpd quartile 5
+vpd_m_u5 <- median_vpd_unct |> filter(quartile == "5%") |> 
+  ggplot(aes(L, partial, group = sim)) +
+  geom_line(alpha = 0.3, color = "black") +
+  geom_line(med_5, mapping = aes(x = L, y = fit), color = "blue", size = 1, inherit.aes = FALSE) +
+  labs(x = "Lag (days before fire)", y = "Partial Effect on Median Severity", color = "Quartile") +
+  scale_x_reverse(breaks = seq(1,30,5), labels = paste0("-", seq(1,30,5))) +
+  theme(
+    panel.border = element_rect(fill = NA, colour = "black", size = 1.5),
+    text = element_text(family = "Barlow", size = 14),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+#uncertaint median vpd quartile 25
+vpd_m_u25 <- median_vpd_unct |> filter(quartile == "25%") |> 
+  ggplot(aes(L, partial, group = sim)) +
+  geom_line(alpha = 0.3, color = "black") +
+  geom_line(med_25, mapping = aes(x = L, y = fit), color = "blue", size = 1, inherit.aes = FALSE) +
+  labs(x = "Lag (days before fire)", y = "Partial Effect on Median Severity", color = "Quartile") +
+  scale_x_reverse(breaks = seq(1,30,5), labels = paste0("-", seq(1,30,5))) +
+  theme(
+    panel.border = element_rect(fill = NA, colour = "black", size = 1.5),
+    text = element_text(family = "Barlow", size = 14),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+#uncertainty median vpd quartile 50
+vpd_m_u50 <- median_vpd_unct |> filter(quartile == "50%") |> 
+  ggplot(aes(L, partial, group = sim)) +
+  geom_line(alpha = 0.3, color = "black") +
+  geom_line(med_50, mapping = aes(x = L, y = fit), color = "blue", size = 1, inherit.aes = FALSE) +
+  labs(x = "Lag (days before fire)", y = "Partial Effect on Median Severity", color = "Quartile") +
+  scale_x_reverse(breaks = seq(1,30,5), labels = paste0("-", seq(1,30,5))) +
+  theme(
+    panel.border = element_rect(fill = NA, colour = "black", size = 1.5),
+    text = element_text(family = "Barlow", size = 14),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+#uncertainty median vpd quartile 75
+vpd_m_u75 <- median_vpd_unct |> filter(quartile == "75%") |> 
+  ggplot(aes(L, partial, group = sim)) +
+  geom_line(alpha = 0.3, color = "black") +
+  geom_line(med_75, mapping = aes(x = L, y = fit), color = "blue", size = 1, inherit.aes = FALSE) +
+  labs(x = "Lag (days before fire)", y = "Partial Effect on Median Severity", color = "Quartile") +
+  scale_x_reverse(breaks = seq(1,30,5), labels = paste0("-", seq(1,30,5))) +
+  theme(
+    panel.border = element_rect(fill = NA, colour = "black", size = 1.5),
+    text = element_text(family = "Barlow", size = 14),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+## extreme
+
+
+```{r}
+extreme_vpd_unct <- rbind(extreme_5_v$curves,
+                        extreme_25_v$curves,
+                        extreme_50_v$curves,
+                        extreme_75_v$curves)
+extreme_vpd_unct$quartile <- factor(extreme_vpd_unct$quartile, levels = c("5%", "25%", "50%", "75%"))
+
+ext_5 <- extreme_5_v$median
+ext_25 <- extreme_25_v$median
+ext_50 <- extreme_50_v$median
+ext_75 <- extreme_75_v$median
+
+
+# uncertaint median vpd quartile 5
+vpd_e_u5 <- extreme_vpd_unct |> filter(quartile == "5%") |> 
+  ggplot(aes(L, partial, group = sim)) +
+  geom_line(alpha = 0.3, color = "black") +
+  geom_line(ext_5, mapping = aes(x = L, y = fit), color = "blue", size = 1, inherit.aes = FALSE) +
+  labs(title = "5% Quartile", x = "Lag (days before fire)", y = "Partial Effect on Extreme Severity", color = "Quartile") +
+  scale_x_reverse(breaks = seq(1,30,5), labels = paste0("-", seq(1,30,5))) +
+  theme(
+    panel.border = element_rect(fill = NA, colour = "black", size = 1.5),
+    text = element_text(family = "Barlow", size = 14),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+#uncertaint median vpd quartile 25
+vpd_e_u25 <- extreme_vpd_unct |> filter(quartile == "25%") |> 
+  ggplot(aes(L, partial, group = sim)) +
+  geom_line(alpha = 0.3, color = "black") +
+  geom_line(ext_25, mapping = aes(x = L, y = fit), color = "blue", size = 1, inherit.aes = FALSE) +
+  labs(title = "25% Quartile",x = "Lag (days before fire)", y = "Partial Effect on Extreme Severity", color = "Quartile") +
+  scale_x_reverse(breaks = seq(1,30,5), labels = paste0("-", seq(1,30,5))) +
+  theme(
+    panel.border = element_rect(fill = NA, colour = "black", size = 1.5),
+    text = element_text(family = "Barlow", size = 14),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+#uncertainty median vpd quartile 50
+vpd_e_u50 <- extreme_vpd_unct |> filter(quartile == "50%") |> 
+  ggplot(aes(L, partial, group = sim)) +
+  geom_line(alpha = 0.3, color = "black") +
+  geom_line(ext_50, mapping = aes(x = L, y = fit), color = "blue", size = 1, inherit.aes = FALSE) +
+  labs(title = "50% Quartile",x = "Lag (days before fire)", y = "Partial Effect on Extreme Severity", color = "Quartile") +
+  scale_x_reverse(breaks = seq(1,30,5), labels = paste0("-", seq(1,30,5))) +
+  theme(
+    panel.border = element_rect(fill = NA, colour = "black", size = 1.5),
+    text = element_text(family = "Barlow", size = 14),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+#uncertainty median vpd quartile 75
+vpd_e_u75 <- extreme_vpd_unct |> filter(quartile == "75%") |> 
+  ggplot(aes(L, partial, group = sim)) +
+  geom_line(alpha = 0.3, color = "black") +
+  geom_line(ext_75, mapping = aes(x = L, y = fit), color = "blue", size = 1, inherit.aes = FALSE) +
+  labs(title = "75% Quartile",x = "Lag (days before fire)", y = "Partial Effect on Extreme Severity", color = "Quartile") +
+  scale_x_reverse(breaks = seq(1,30,5), labels = paste0("-", seq(1,30,5))) +
+  theme(
+    panel.border = element_rect(fill = NA, colour = "black", size = 1.5),
+    text = element_text(family = "Barlow", size = 14),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+# cmi
 
 ```{r}
 # rbind all cmi median
@@ -271,6 +415,10 @@ cmi_e_q <- ggplot(extreme_cmi_all, aes(x = LL, y = fit, color = quartile)) +
 cmi_m_q + cmi_e_q
 ```
 Analyzed lagged effects through visualization of the 2D smooths from the distributed lag smooths. Significant areas circled in black . If no significant areas, there were no differences across lags. Suggests that lagged effects are not as importance as the overall effects of moisture condditions on fire severity.
+
+## cmi uncertainty
+
+
 
 
 # 2D Smooths
@@ -334,6 +482,10 @@ ggsave(here("figures", "lagged_effects_median_extreme.png"), width = 8, height =
 
 p4 <- cmi_m_q + cmi_e_q + plot_layout(ncol = 2) +  plot_layout(guides = 'collect') 
 ggsave(here("figures", "cmi_lagged_effects_median_extreme.png"), width = 8, height = 4, dpi = 300)
+
+p5 <- vpd_m_q + vpd_e_q + plot_layout(ncol = 2) +  plot_layout(guides = 'collect')
+
+ggsave(here("figures", "vpd_lagged_effects_median_extreme.png"), width = 8, height = 4, dpi = 300)
 
 ```
 

@@ -290,7 +290,7 @@ one_d_slice_draws <- function(model, smooth_id = 1, q = "5%" , moisture_data, se
     smooth_var <- "cmi_wy"
     df_long <- as_tibble(curve_mat[, cols_to_plot]) %>%
       mutate(LL = newdat$LL) %>%
-      pivot_longer(-LL, names_to = "sim", values_to = "partial")
+      pivot_longer(-LL, names_to = "sim", values_to = "partial") |> mutate(quartile  = q)
 
     # median curve across refits
     median_curve <- apply(curve_mat, 1, mean, na.rm = TRUE)
@@ -305,7 +305,7 @@ one_d_slice_draws <- function(model, smooth_id = 1, q = "5%" , moisture_data, se
       smooth_var <- "vpd"
       df_long <- as_tibble(curve_mat[, cols_to_plot]) %>%
         mutate(L = newdat$L) %>%
-        pivot_longer(-L, names_to = "sim", values_to = "partial")
+        pivot_longer(-L, names_to = "sim", values_to = "partial")|> mutate(quartile  = q)
 
       # median curve across refits
       median_curve <- apply(curve_mat, 1, mean, na.rm = TRUE)
@@ -319,7 +319,7 @@ one_d_slice_draws <- function(model, smooth_id = 1, q = "5%" , moisture_data, se
 
     }
  
-    return(list(curves = df_long, median = median_df, smooth_var = smooth_var, plot = plot))
+    return(list(curves = df_long, median = median_df, smooth_var = smooth_var, plot = plot, curve_mat = curve_mat))
 }
 
 
