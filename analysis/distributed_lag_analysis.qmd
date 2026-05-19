@@ -100,13 +100,15 @@ saveRDS(m_ext, here("analysis", "models","m_ext.rds"))
 
 median
 ```{r}
-gam.check(m_median)
+check_plot_m <- gam.check(m_median)
+
+
 ```
 
 ext
 ```{r}
-gam.check(m_median)
-
+check_plot_e <- gam.check(m_ext)
+check_plot_e
 ```
 
 # H1/H2: What is the relative impact of moisture conditions on burn severity?
