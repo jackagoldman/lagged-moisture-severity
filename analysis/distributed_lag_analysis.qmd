@@ -43,7 +43,7 @@ conflicted::conflict_prefer("filter", "dplyr")
 # Read in data
 
 ```{r}
-moisture_data <- readRDS(here ("data", "analysis_ready","moisture_lagged_non_scaled_data.rds")) 
+moisture_data <- readRDS(here ("data", "analysis_ready","moisture_lagged_non_scaled_data_20260519.rds")) 
 ```
 
 ```{r}
@@ -59,7 +59,7 @@ moisture_data <- moisture_data |> drop_na()
 ## vpd 
 ```{r}
 
-m_median <- gam(median~ 
+m_median <- mgcv::gam(median~ 
         te(cmi_wy, LL, k = c(30,5))+
        te(vpd, L, k = c(10,30))+
         s(pct_conf, k = 10) +  
@@ -70,10 +70,11 @@ m_median <- gam(median~
       family = scat(link = "identity"),
       method = "REML")
 
+summary(m_median)
 ```
 
 ```{r}
-m_ext <- gam(pct_95~ 
+m_ext <- mgcv::gam(pct_95~ 
       te(cmi_wy, LL, k = c(30,5))+
        te(vpd, L, k = c(10, 30))+
         s(pct_conf, k = 10) +  
@@ -84,6 +85,7 @@ m_ext <- gam(pct_95~
       family = scat(link = "identity"),
       method = "REML")
 
+summary(m_ext)
 ```
 
 
@@ -92,8 +94,8 @@ m_ext <- gam(pct_95~
 
 ```{r}
 
-saveRDS(m_median, here("analysis", "models","m_median.rds"))
-saveRDS(m_ext, here("analysis", "models","m_ext.rds"))
+saveRDS(m_median, here("analysis", "models","m_median_v2.rds"))
+saveRDS(m_ext, here("analysis", "models","m_ext_v2.rds"))
 ```
 
 ## assess model fits
@@ -118,10 +120,10 @@ checked hierarchical partitioning using gam.hp
 ## median
 ```{r}
 iv <- list(
-  intra = "te(vpd,L,bs=c(\"tp\",\"cr\"))",
-  inter = "te(cmi_wy,LL,bs=c(\"tp\",\"cr\"))",
-  fire_weather = "s(dc_90th,by=ecoregion_lvl)",
-  fuels = "s(pct_conf, by= ecoregion_lvl)")
+  intra = "te(vpd,L)",
+  inter = "te(cmi_wy,LL)",
+  fire_weather = "s(dc_90th)",
+  fuels = "s(pct_conf)")
 median_hp <- gam.hp(m_median, iv)
 median_hp
 ```
@@ -164,7 +166,7 @@ all_data <- bind_rows(med_sum, ext_sum)
 all_data_table <- all_data |> gt()
 
 # Save the table
-gtsave(all_data_table, here("tables", "gam_summary_table_median_extreme_v5.docx"))
+gtsave(all_data_table, here("tables", "gam_summary_table_median_extreme_20260521.docx"))
 ```
 
 # H4: Do lagged effects matter?
