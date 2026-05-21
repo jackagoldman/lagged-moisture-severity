@@ -9,11 +9,11 @@ library(tidyverse)
 source(here("utils", "plot_functions.r"))
 
 # models
-m_median <- readRDS(here("analysis", "models", "m_median.rds"))
-m_ext <- readRDS(here("analysis", "models", "m_ext.rds"))
+m_median <- readRDS(here("analysis", "models", "m_median_v2.rds"))
+m_ext <- readRDS(here("analysis", "models", "m_ext_v2.rds"))
 
 # data 
-moisture_data <- readRDS(here("data", "analysis_ready", "moisture_lagged_non_scaled_data.rds"))
+moisture_data <- readRDS(here("data", "analysis_ready", "moisture_lagged_non_scaled_data_20260519.rds"))
 
 ```
 
@@ -111,6 +111,11 @@ ggsave(here("figures", "smooth_predictor_plots.png"), width = 6, height = 6)
 # Deviance explained by each group
 
 ```{r}
+
+extreme_hp <- readRDS(here("analysis", "results", "extreme_hp.rds"))
+median_hp <- readRDS(here("analysis", "results", "median_hp.rds"))
+
+
 var_colours <- c("CMI" = "gray30", "VPD" = "orangered", "Drought Code" = "firebrick", "Conifer Cover" = "darkgreen")
 
 I.ext <- extreme_hp$hierarchical.partitioning |> 
@@ -651,7 +656,7 @@ p2 <- (p_e / q_e) + plot_layout(ncol = 1) + plot_annotation(tag_levels = "A")
 p2
 #save to figures
 p3 <- (plot_vpd_med + plot_c_med + plot_vpd_ext + plot_c_ext ) + plot_layout(ncol = 2) + plot_annotation(tag_levels = "A")
-ggsave(here("figures", "lagged_effects_median_extreme.png"), width = 8, height = 8, dpi = 300)
+ggsave(here("figures", "lagged_effects_median_extreme_2D.png"), width = 8, height = 8, dpi = 300)
 
 
 p4 <- cmi_m_q + cmi_e_q + plot_layout(ncol = 2) +  plot_layout(guides = 'collect') 
@@ -677,3 +682,13 @@ get_steepest(estimates_ext_c)
 summary(get_steepest(estimates_med)$sig)
 ```
 
+
+```{r}
+cor(moisture_data[, c("dc_90th", "cmi_wy", "vpd", "pct_conf")], use = "complete.obs")
+```
+
+
+```{r}
+mgcv::concurvity(m_ext, full = TRUE)
+
+```
