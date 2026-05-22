@@ -28,7 +28,7 @@ vpd_wide <- readRDS(here("data", "cleaned","vpd_30_wide.rds"))
 rbr <- readRDS(here("data", "cleaned","rbr_cleaned.rds"))
 landcover <- readRDS(here("data", "cleaned","landcover_cleaned.rds"))
 fwi <- read_csv(here("data", 'fwi_90th_duration_by_fire_full.csv'))
-cmi_wide <- readRDS(here("data", "cleaned","cmi_wy_cleaned.rds"))
+cmi_wide <- readRDS(here("data", "cleaned","cmi_wy_cleaned_20260519.rds"))
 ```
 
 # round all column to .00
@@ -354,7 +354,7 @@ moisture_df <- moisture_df %>%
 ```
 
 ```{r}
-saveRDS(moisture_df, here("data", "analysis_ready", "moisture_lagged_non_scaled_data.rds"))
+saveRDS(moisture_df, here("data", "analysis_ready", "moisture_lagged_non_scaled_data_20260519.rds"))
 
 
 ```

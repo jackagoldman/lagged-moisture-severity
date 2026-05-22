@@ -441,7 +441,11 @@ cmi_e_q <- ggplot(extreme_cmi_all, aes(x = LL, y = fit, color = quartile)) +
     text = element_text(family = "Barlow", size = 14)
   )
 cmi_m_q + cmi_e_q
+
+ggsave(here( "figures", "cmi_partial_effects.png"), width = 6, height = 6, dpi = 300)
+
 ```
+
 Analyzed lagged effects through visualization of the 2D smooths from the distributed lag smooths. Significant areas circled in black . If no significant areas, there were no differences across lags. Suggests that lagged effects are not as importance as the overall effects of moisture condditions on fire severity.
 
 ## cmi uncertainty

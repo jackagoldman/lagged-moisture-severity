@@ -214,7 +214,7 @@ Read in cmi data
 
 
 ```{r}
-cmi_data = read_csv(here("data", "cmi_hogg_water_year_anomaly.csv"))
+cmi_data = read_csv(here("data", "cmi_water_year_anomalies.csv"))
 
 ```
 
@@ -270,13 +270,13 @@ cmi_ma <- cmi_cleaned |>
 
 # save cmi_wide joined 
 ```{r}
-saveRDS(cmi_wide, "data/cleaned/cmi_wy_cleaned.rds")
+saveRDS(cmi_wide, "../data/cleaned/cmi_wy_cleaned_20260519.rds")
 ```
 
 
 # save cmi_ma
 ```{r}
-saveRDS(cmi_ma, here("data", "cleaned","cmi_wy_ma_5.rds"))
+saveRDS(cmi_ma, here("data", "cleaned","cmi_wy_ma_5_20260519.rds"))
 ```
 
 
