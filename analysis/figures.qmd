@@ -659,7 +659,7 @@ q_e <- vpd_e_q + cmi_e_q + plot_layout(ncol = 2) + plot_layout(widths = c(2, 2))
 p2 <- (p_e / q_e) + plot_layout(ncol = 1) + plot_annotation(tag_levels = "A")
 p2
 #save to figures
-p3 <- (plot_vpd_med + plot_c_med + plot_vpd_ext + plot_c_ext ) + plot_layout(ncol = 2) + plot_annotation(tag_levels = "A")
+p3 <- (plot_vpd_med + plot_c_med + plot_vpd_ext + plot_c_ext ) + plot_layout(ncol = 2) + plot_annotation(tag_levels = list(c("A", "C", "B", "D")))
 ggsave(here("figures", "lagged_effects_median_extreme_2D.png"), width = 8, height = 8, dpi = 300)
 
 
@@ -683,7 +683,68 @@ get_steepest(estimates_med_c)
 get_steepest(estimates_ext)
 get_steepest(estimates_ext_c)
 
-summary(get_steepest(estimates_med)$sig)
+sig <- get_steepest(estimates_ext_c)$sig
+
+#  see distinct clusters
+sig |> 
+  mutate(pos_neg = ifelse(.estimate > 0, "positive", "negative")) |> 
+  group_by(pos_neg) |> 
+  summarise(
+    cmi_min = min(cmi_wy),
+    cmi_max = max(cmi_wy),
+    lag_min = min(LL),
+    lag_max = max(LL),
+    est_min = min(.estimate),
+    est_max = max(.estimate),
+    n = n()
+  )
+
+library(dbscan)
+
+# cluster the significant points
+sig_coords <- sig %>% 
+  select(cmi_wy, LL) %>% 
+  scale()  # scale so CMI and lag units are comparable
+
+# tune eps by eye — try 0.1 to 0.3
+clusters <- dbscan(sig_coords, eps = 0.15, minPts = 5)
+
+sig <- sig %>% 
+  mutate(cluster = clusters$cluster)
+
+# summarise each cluster
+sig %>%
+  filter(cluster > 0) %>%  # 0 = noise points
+  mutate(pos_neg = ifelse(.estimate > 0, "positive", "negative")) %>%
+  group_by(cluster, pos_neg) %>%
+  summarise(
+    cmi_min = min(cmi_wy),
+    cmi_max = max(cmi_wy),
+    lag_min = min(LL),
+    lag_max = max(LL),
+    est_min = min(.estimate),
+    est_max = max(.estimate),
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(cluster)
+
+sig %>%
+  filter(cluster > 0) %>%
+  mutate(pos_neg = ifelse(.estimate > 0, "positive", "negative")) %>%
+  group_by(cluster, pos_neg) %>%
+  summarise(
+    cmi_min = min(cmi_wy),
+    cmi_max = max(cmi_wy),
+    lag_min = min(LL),
+    lag_max = max(LL),
+    est_min = min(.estimate),
+    est_max = max(.estimate),
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(cluster) %>%
+  print(width = Inf)  # show all columns
 ```
 
 

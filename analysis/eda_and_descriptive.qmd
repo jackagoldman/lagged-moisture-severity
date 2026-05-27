@@ -787,3 +787,27 @@ ggplot(moisture_data, aes(x = mean_ndmi, y = pct_90)) +
 ```
 
 
+# what is the percent conifer cover in the negative median rbr 
+
+
+```{r}
+median <- moisture_data |> filter(median < 0)
+summary(median$pct_conf)
+```
+
+```{r}
+gter_than_zero <- moisture_data |> filter(median >= 0)
+summary(gter_than_zero$pct_conf)
+summary(moisture_data$pct_conf)
+```
+
+# when did these fires burn ?
+```{r}
+summary(median$season)
+```
+
+# AOU
+
+```{r}
+summary(median$AOU)
+```
