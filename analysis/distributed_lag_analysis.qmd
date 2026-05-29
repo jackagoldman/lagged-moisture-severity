@@ -102,15 +102,14 @@ saveRDS(m_ext, here("analysis", "models","m_ext_v2.rds"))
 
 median
 ```{r}
-check_plot_m <- gam.check(m_median)
-
-
+check_plot_m <- gratia::appraise(m_median)
+ggsave(here("supplementary", "figures", "residual_plot_median.png"), check_plot_m, width = 8, height = 6)
 ```
 
 ext
 ```{r}
-check_plot_e <- gam.check(m_ext)
-check_plot_e
+check_plot_e <- gratia::appraise(m_ext)
+ggsave(here("supplementary", "figures", "residual_plot_extreme.png"), check_plot_e, width = 8, height = 6)
 ```
 
 # H1/H2: What is the relative impact of moisture conditions on burn severity?
