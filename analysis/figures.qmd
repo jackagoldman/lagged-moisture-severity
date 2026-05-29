@@ -38,7 +38,7 @@ smooth_med <- smooth_estimates(m_median,
 conf_med <- ggplot() +
   geom_line(data = smooth_med, aes(x = pct_conf, y = .estimate, ), size = 1.5, lineend = "round") +
   geom_ribbon(data = smooth_med, aes(x = pct_conf, ymin = .lower_ci, ymax = .upper_ci), alpha = 0.2) +
-  labs(x = "Percent Conifer Cover",  y = "Median Burn Severity") +
+  labs(x = "Percent Conifer Cover",  y = "Partial Effect on Median Severity") +
   theme_bw() 
 
 
@@ -53,7 +53,7 @@ conf_ext <- ggplot() +
   #geom_point(data = moisture_data, aes(x = pct_conf, y = pct_95, color = ecoregion_lvl), alpha = 0.1) +
   geom_line(data = smooth_ext, aes(x = pct_conf, y = .estimate), size = 1.5, lineend = "round") +
   geom_ribbon(data = smooth_ext, aes(x = pct_conf, ymin = .lower_ci, ymax = .upper_ci), alpha = 0.2) +
-  labs(x = "Percent Conifer Cover",  y = "Extreme Burn Severity") +
+  labs(x = "Percent Conifer Cover",  y = "Partial Effect on Extreme Severity") +
   theme_bw() 
 conf_ext
 
@@ -83,7 +83,7 @@ fwi_med<- ggplot() +
   #geom_point(data = moisture_data, aes(x = mean_evi, y = median, color = ecoregion_lvl), alpha = 0.1) +
   geom_line(data = smooth_med, aes(x = dc_90th, y = .estimate), size = 1.5, lineend = "round") +
   geom_ribbon(data = smooth_med, aes(x = dc_90th, ymin = .lower_ci, ymax = .upper_ci), alpha = 0.2) +
-  labs(x = "DC 90th Percentile", y = "Median Burn Severity") +
+  labs(x = "DC 90th Percentile", y = "Partial Effect on Median Severity") +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5)) 
 
@@ -91,7 +91,7 @@ fwi_ext <- ggplot() +
   #geom_point(data = moisture_data, aes(x = mean_evi, y = median, color = ecoregion_lvl), alpha = 0.1) +
   geom_line(data = smooth_ext, aes(x = dc_90th, y = .estimate), size = 1.5, lineend = "round") +
   geom_ribbon(data = smooth_ext, aes(x = dc_90th, ymin = .lower_ci, ymax = .upper_ci), alpha = 0.2) +
-  labs(x = "DC 90th Percentile",  y = "Extreme Burn Severity") +
+  labs(x = "DC 90th Percentile",  y = "Partial Effect on Extreme Severity") +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5)) 
 
@@ -243,7 +243,11 @@ vpd_e_q <- ggplot(extreme_vpd_all, aes(x = L, y = fit, color = quartile)) +
     text = element_text(family = "Barlow", size = 14)
   )
 
-vpd_m_q + vpd_e_q 
+vpd_m_q + vpd_e_q + plot_layout(ncol = 2) + plot_annotation(tag_levels = "A") + plot_layout(guides = 'collect')
+
+# save
+ggsave(here("figures", "vpd_partial_effects.png"), width = 8, height = 4)
+
 ```
 
 # vpd  uncertainty
@@ -440,9 +444,9 @@ cmi_e_q <- ggplot(extreme_cmi_all, aes(x = LL, y = fit, color = quartile)) +
     panel.border = element_rect(fill = NA, colour = "black", size = 1.5),
     text = element_text(family = "Barlow", size = 14)
   )
-cmi_m_q + cmi_e_q
+cmi_m_q + cmi_e_q + plot_layout(ncol = 2) + plot_annotation(tag_levels = "A") + plot_layout(guides = 'collect')
 
-ggsave(here( "figures", "cmi_partial_effects.png"), width = 6, height = 6, dpi = 300)
+ggsave(here( "figures", "cmi_partial_effects.png"), width = 8, height = 4, dpi = 300)
 
 ```
 
