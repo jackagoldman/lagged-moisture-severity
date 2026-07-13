@@ -1,37 +1,3 @@
-
-#' Title: Brief one-line title
-#'
-#' @description
-#' Short description of what the function does. Provide enough detail for a reader
-#' to understand the function's purpose and behavior.
-#'
-#' @param x <type> Description of parameter x: expected values, length, units, or structure.
-#' @param y <type> Description of parameter y: allowed options and how it affects results.
-#' @param ... Additional arguments passed to methods or lower-level functions.
-#'
-#' @return <type> Description of the returned value. If returning a list or data.frame,
-#'   document important fields/columns and their types.
-#'
-#' @details
-#' More extensive notes on algorithm, side effects (e.g. modifies global state, files),
-#' NA/NULL handling, performance characteristics, and any invariants or guarantees.
-#'
-#' @examples
-#' \dontrun{
-#' # Basic usage
-#' res <- your_function(x = 1, y = "option")
-#'
-#' # Example showing edge-case behavior
-#' }
-#'
-#' @seealso
-#' \code{\link[base]{other_function}}, other_related_function
-#'
-#' @author Your Name
-#' @export
-#' @keywords internal
-#' 
-#' 
 make_gam_summary_table <- function(model) {
   require(gt)
   require(dplyr)
